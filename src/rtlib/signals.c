@@ -1,7 +1,7 @@
 /* signal handlers */
 
 // Emscripten doesn't have signals
-#ifndef HOST_JS
+#if !defined(HOST_JS) && !defined(HOST_AMIGA)
 
 #include "fb.h"
 #include <signal.h>
@@ -84,4 +84,9 @@ FBCALL void fb_InitSignals( void )
 #endif
 }
 
+#endif
+
+#if defined(HOST_AMIGA)
+#include "fb.h"
+void fb_InitSignals(void) { }
 #endif
