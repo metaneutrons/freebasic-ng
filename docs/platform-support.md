@@ -7,7 +7,7 @@ M1 releases native `fbc` host archives for the following Tier 1 platforms:
 | `linux-x86_64` | Linux x86_64 | `bootstrap/linux-x86_64` | `ubuntu-24.04` |
 | `linux-aarch64` | Linux ARM64 | `bootstrap/linux-aarch64` | `ubuntu-24.04-arm` |
 | `darwin-x86_64` | macOS Intel | `bootstrap/darwin-x86_64` | `macos-15-intel` |
-| `darwin-aarch64` | macOS Apple silicon | `bootstrap/darwin-aarch64` | `macos-14` |
+| `darwin-aarch64` | macOS Apple silicon | `bootstrap/darwin-aarch64` | `macos-15` |
 | `win64` | Windows x86_64 | `bootstrap/win64` | `windows-2025` with MSYS2 `MINGW64` |
 | `win32-aarch64` | Windows ARM64 | `bootstrap/win32-aarch64` | `windows-11-arm` with MSYS2 `CLANGARM64` |
 

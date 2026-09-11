@@ -10,8 +10,14 @@ from pathlib import Path
 
 
 def run(command: list[str], *, cwd: Path | None = None) -> str:
-    result = subprocess.run(command, cwd=cwd, check=True, text=True,
+    result = subprocess.run(command, cwd=cwd, text=True,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if result.returncode:
+        rendered = " ".join(command)
+        raise RuntimeError(
+            f"command failed with exit status {result.returncode}: {rendered}\n"
+            f"{result.stdout}"
+        )
     return result.stdout
 
 
