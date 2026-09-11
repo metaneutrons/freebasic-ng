@@ -174,6 +174,10 @@ endif() # not amiga
 
 # --- Installation ---
 install(TARGETS fb ARCHIVE DESTINATION "${FB_INSTALL_LIBDIR}")
+# fbc passes this supplemental linker script to GNU ld on non-Darwin
+# targets.  It is part of the compiler runtime layout, rather than a build
+# input, so a staged installation without it cannot compile a program.
+install(FILES "${CMAKE_SOURCE_DIR}/lib/fbextra.x" DESTINATION "${FB_INSTALL_LIBDIR}")
 if(DEFINED FBRT0_OBJ)
     install(FILES "${FBRT0_OBJ}" DESTINATION "${FB_INSTALL_LIBDIR}" RENAME "fbrt0${CMAKE_C_OUTPUT_EXTENSION}")
 endif()
