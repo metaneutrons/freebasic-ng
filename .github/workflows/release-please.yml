@@ -28,7 +28,7 @@ jobs:
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
       - id: configuration
-        name: Check the dedicated GitHub App configuration
+        name: Check the Release Please App configuration
         shell: bash
         run: |
           set -euo pipefail
@@ -36,7 +36,7 @@ jobs:
             echo "configured=true" >> "$GITHUB_OUTPUT"
           else
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Release Please is inactive until the dedicated App credentials are set in the release environment."
+            echo "::notice::Release Please is inactive until the metaneutrons-release-please credentials are set in the release environment."
           fi
 
       - name: Create scoped release token
@@ -46,8 +46,22 @@ jobs:
         with:
           client-id: ${{ vars.RELEASE_PLEASE_CLIENT_ID }}
           private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+          owner: metaneutrons
+          repositories: freebasic-ng
           permission-contents: write
           permission-pull-requests: write
+
+      - name: Verify the scoped token inventory
+        if: steps.configuration.outputs.configured == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          mapfile -t repositories < <(gh api --paginate /installation/repositories --jq '.repositories[].full_name')
+          if [[ ${#repositories[@]} -ne 1 || "${repositories[0]}" != "$GITHUB_REPOSITORY" ]]; then
+            printf '::error::Release Please token has an unexpected repository inventory: %s\n' "${repositories[*]:-<empty>}"
+            exit 1
+          fi
 
       - name: Create or update release pull request
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0

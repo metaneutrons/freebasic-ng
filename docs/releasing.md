@@ -2,9 +2,11 @@
 
 Release Please observes conventional commits on main, opens a version PR and,
 when that PR is merged, creates a draft GitHub release and an immutable
-freebasic-ng-v&lt;version&gt; tag. It authenticates as the dedicated
-FreeBASIC-NG GitHub App; no personal token and no credential from another
-repository is acceptable.
+freebasic-ng-v&lt;version&gt; tag. It authenticates through the existing
+organisation-wide `metaneutrons-release-please` GitHub App; no personal token
+is acceptable. Although that App has a shared parent key and broad
+installation, this workflow requests and verifies an installation token scoped
+to `metaneutrons/freebasic-ng` only.
 
 The tag dispatches the release workflow. For each Tier 1 host it builds from
 the checked-in, provenance-verified bootstrap C sources, stages a normal
@@ -27,11 +29,12 @@ channels are M2 work.
 
 ## Required GitHub configuration
 
-Create a dedicated GitHub App installed only for
-metaneutrons/freebasic-ng, with Contents: read and write and Pull requests:
-read and write. Store its client ID as the release environment variable
-RELEASE_PLEASE_CLIENT_ID and its generated private key as the release
-environment secret RELEASE_PLEASE_APP_PRIVATE_KEY.
+Use the existing `metaneutrons-release-please` App (client ID
+`Iv23liGQAEDw6hfrazTD`). Store that ID as the `release` environment variable
+`RELEASE_PLEASE_CLIENT_ID` and its existing private key as the `release`
+environment secret `RELEASE_PLEASE_APP_PRIVATE_KEY`. The workflow must retain
+its explicit `owner: metaneutrons`, `repositories: freebasic-ng` token request
+and reject any token inventory other than this repository.
 
 The release workflow itself uses GitHub Actions OIDC for Cosign; it does not
 need a stored signing key. The repository must permit Actions to create
