@@ -1,4 +1,4 @@
-# M1 release process
+# M1 and M2 release process
 
 Release Please observes conventional commits on main, opens a version PR and,
 when that PR is merged, creates a draft GitHub release and an immutable
@@ -23,9 +23,12 @@ present. Each archive has:
 - a signed SHA256SUMS inventory covering the archives, SBOMs and bundles.
 
 It downloads the assets from the draft release and verifies the checksum
-inventory before the draft is made visible. The M1 workflow deliberately has
-no APT, Homebrew or AUR credentials or publication steps. Those distribution
-channels are M2 work.
+inventory before the draft is made visible. M2 adds native Debian packages for
+`amd64` and `arm64`, a signed source archive, and measured Homebrew plus AUR
+source/binary metadata to that same candidate. Before visibility, clean
+Bookworm, Homebrew on both macOS architectures, and Arch Linux x86_64/aarch64
+qualification lanes install the generated packages and compile a program with
+`fbc`. Qualification receives no channel credentials.
 
 ## Required GitHub configuration
 

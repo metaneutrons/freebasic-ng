@@ -2,8 +2,8 @@ name: Release
 
 # Release Please is the sole tag creator.  It dispatches this workflow against
 # that tag, which makes release identity explicit and prevents a tag push from
-# starting competing publication runs.  Every release produced here remains a
-# GitHub prerelease during M1; APT, Homebrew and AUR promotion are M2 work.
+# starting competing publication runs.  A candidate stays a GitHub prerelease
+# until its host archives and all M2 package channels have been qualified.
 on:
   workflow_dispatch:
 
@@ -247,16 +247,120 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  debian:
+    name: Build and qualify Debian ${{ matrix.architecture }}
+    needs: metadata
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: amd64
+            runner: ubuntu-24.04
+          - architecture: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Build a native Bookworm package
+        shell: bash
+        env:
+          VERSION: ${{ needs.metadata.outputs.version }}
+          ARCHITECTURE: ${{ matrix.architecture }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist "$RUNNER_TEMP/debian-work"
+          docker run --rm \
+            --env VERSION \
+            --volume "$GITHUB_WORKSPACE:/source:ro" \
+            --volume "$RUNNER_TEMP/debian-work:/work" \
+            --volume "$GITHUB_WORKSPACE/dist:/out" \
+            debian:bookworm-slim bash -euxo pipefail -c '
+              apt-get update
+              apt-get install -y --no-install-recommends \
+                build-essential cmake dpkg-dev libffi-dev libgpm-dev \
+                libncurses-dev libx11-dev ninja-build python3
+              /source/scripts/release/build-debian-package.sh \
+                --source-dir /source --work-dir /work/build --output-dir /out \
+                --version "${VERSION}"
+            '
+          package="dist/freebasic-ng_${VERSION}-1_${ARCHITECTURE}.deb"
+          test -f "$package"
+          dpkg-deb --field "$package" Package Version Architecture
+
+      - name: Install and run the package in a fresh Bookworm container
+        shell: bash
+        env:
+          VERSION: ${{ needs.metadata.outputs.version }}
+          ARCHITECTURE: ${{ matrix.architecture }}
+        run: |
+          set -euo pipefail
+          package="freebasic-ng_${VERSION}-1_${ARCHITECTURE}.deb"
+          docker run --rm --volume "$GITHUB_WORKSPACE/dist:/out:ro" \
+            debian:bookworm-slim bash -euxo pipefail -c '
+              apt-get update
+              apt-get install -y "/out/'"$package"'"
+              printf "Print \\\"FreeBASIC-NG Debian package smoke\\\"\\n" > /tmp/smoke.bas
+              cd /tmp
+              fbc smoke.bas -x smoke
+              test "$(./smoke)" = "FreeBASIC-NG Debian package smoke"
+              fbc --version | grep -F "Version '"${VERSION}"'"
+            '
+
+      - name: Generate an SPDX SBOM
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        with:
+          file: dist/freebasic-ng_${{ needs.metadata.outputs.version }}-1_${{ matrix.architecture }}.deb
+          format: spdx-json
+          output-file: dist/freebasic-ng_${{ needs.metadata.outputs.version }}-1_${{ matrix.architecture }}.deb.spdx.json
+          upload-artifact: false
+
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.1.1
+
+      - name: Keylessly sign the Debian package
+        shell: bash
+        env:
+          VERSION: ${{ needs.metadata.outputs.version }}
+          ARCHITECTURE: ${{ matrix.architecture }}
+        run: |
+          set -euo pipefail
+          subject="dist/freebasic-ng_${VERSION}-1_${ARCHITECTURE}.deb"
+          cosign sign-blob --yes --bundle "${subject}.sigstore.json" "$subject"
+
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/freebasic-ng_${{ needs.metadata.outputs.version }}-1_${{ matrix.architecture }}.deb
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.0
+        with:
+          name: release-debian-${{ matrix.architecture }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
   candidate:
     name: Verify release candidate
-    needs: [metadata, build]
+    needs: [metadata, build, debian]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: read
       id-token: write
-      attestations: read
+      attestations: write
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
+        with:
+          persist-credentials: false
+
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: release-*
@@ -269,6 +373,30 @@ jobs:
         with:
           cosign-release: v3.1.1
 
+      - name: Archive, sign and attest the exact release source
+        shell: bash
+        env:
+          VERSION: ${{ needs.metadata.outputs.version }}
+        run: |
+          set -euo pipefail
+          source="candidate/freebasic-ng-${VERSION}-source.tar.gz"
+          git archive --format=tar.gz --prefix="freebasic-ng-${VERSION}/" "$GITHUB_SHA" > "$source"
+          tar -tzf "$source" | grep -Fx "freebasic-ng-${VERSION}/CMakeLists.txt"
+          tar -tzf "$source" | grep -Fx "freebasic-ng-${VERSION}/bootstrap/provenance.json"
+          cosign sign-blob --yes --bundle "${source}.sigstore.json" "$source"
+
+      - name: Generate an SPDX SBOM for the source archive
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        with:
+          file: candidate/freebasic-ng-${{ needs.metadata.outputs.version }}-source.tar.gz
+          format: spdx-json
+          output-file: candidate/freebasic-ng-${{ needs.metadata.outputs.version }}-source.tar.gz.spdx.json
+          upload-artifact: false
+
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: candidate/freebasic-ng-${{ needs.metadata.outputs.version }}-source.tar.gz
+
       - name: Keylessly sign the Windows ARM release archive
         shell: bash
         env:
@@ -278,7 +406,7 @@ jobs:
           subject="candidate/freebasic-ng-${VERSION}-win32-aarch64.zip"
           cosign sign-blob --yes --bundle "${subject}.sigstore.json" "$subject"
 
-      - name: Require all target archives and SBOMs
+      - name: Require all host archives, Debian packages and the source archive
         shell: bash
         env:
           VERSION: ${{ needs.metadata.outputs.version }}
@@ -291,6 +419,9 @@ jobs:
             "freebasic-ng-${VERSION}-darwin-aarch64.tar.xz"
             "freebasic-ng-${VERSION}-win64.zip"
             "freebasic-ng-${VERSION}-win32-aarch64.zip"
+            "freebasic-ng_${VERSION}-1_amd64.deb"
+            "freebasic-ng_${VERSION}-1_arm64.deb"
+            "freebasic-ng-${VERSION}-source.tar.gz"
           )
           for payload in "${payloads[@]}"; do
             for suffix in '' '.spdx.json' '.sigstore.json'; do
@@ -300,7 +431,7 @@ jobs:
               }
             done
           done
-          test "$(find candidate -maxdepth 1 -type f | wc -l | tr -d ' ')" = 18
+          test "$(find candidate -maxdepth 1 -type f | wc -l | tr -d ' ')" = 27
           for sbom in candidate/*.spdx.json; do
             jq -e '.spdxVersion | startswith("SPDX-")' "$sbom" >/dev/null
           done
@@ -322,6 +453,42 @@ jobs:
             gh attestation verify "$subject" --repo "$GITHUB_REPOSITORY"
           done
 
+      - name: Generate measured Homebrew and AUR metadata
+        shell: bash
+        env:
+          VERSION: ${{ needs.metadata.outputs.version }}
+          TAG: ${{ needs.metadata.outputs.tag }}
+        run: |
+          set -euo pipefail
+          base="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}"
+          scripts/release/generate-homebrew-formula.sh \
+            --version "$VERSION" --base-url "$base" --candidate-dir candidate \
+            --output candidate/freebasic-ng.rb
+          scripts/release/generate-pkgbuild-source.sh \
+            --version "$VERSION" --base-url "$base" --candidate-dir candidate \
+            --output candidate/PKGBUILD.freebasic-ng
+          scripts/release/generate-pkgbuild-bin.sh \
+            --version "$VERSION" --base-url "$base" --candidate-dir candidate \
+            --output candidate/PKGBUILD.freebasic-ng-bin
+          ruby -c candidate/freebasic-ng.rb
+          bash -n candidate/PKGBUILD.freebasic-ng candidate/PKGBUILD.freebasic-ng-bin
+          test "$(grep -Fc "/releases/download/${TAG}/" candidate/freebasic-ng.rb)" = 2
+
+      - name: Sign and attest the generated channel metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          for subject in candidate/freebasic-ng.rb candidate/PKGBUILD.freebasic-ng candidate/PKGBUILD.freebasic-ng-bin; do
+            cosign sign-blob --yes --bundle "${subject}.sigstore.json" "$subject"
+          done
+
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            candidate/freebasic-ng.rb
+            candidate/PKGBUILD.freebasic-ng
+            candidate/PKGBUILD.freebasic-ng-bin
+
       - name: Write the signed checksum inventory
         shell: bash
         run: |
@@ -339,9 +506,134 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  homebrew-qualify:
+    name: Qualify Homebrew (${{ matrix.runner }})
+    needs: [metadata, candidate]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-candidate
+          path: candidate
+
+      - uses: Homebrew/actions/setup-homebrew@3cdb78d0f62ad29dd32de765782654f4eedea607 # 2026.08.31.1
+        with:
+          core: false
+          cask: false
+
+      - name: Audit, install and run the exact generated formula
+        shell: bash
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: '1'
+          HOMEBREW_NO_ANALYTICS: '1'
+        run: |
+          set -euo pipefail
+          port=38080
+          tap=freebasic-ng/qualification
+          python3 -m http.server "$port" --bind 127.0.0.1 --directory candidate \
+            >"$RUNNER_TEMP/http.log" 2>&1 &
+          server_pid=$!
+          cleanup() {
+            brew uninstall freebasic-ng >/dev/null 2>&1 || true
+            brew untap "$tap" >/dev/null 2>&1 || true
+            kill "$server_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          for attempt in {1..20}; do
+            curl --fail --silent "http://127.0.0.1:${port}/freebasic-ng.rb" >/dev/null && break
+            if [[ "$attempt" == 20 ]]; then
+              echo '::error::the local candidate server did not become ready'
+              exit 1
+            fi
+            sleep 1
+          done
+          brew tap-new --no-git "$tap"
+          formula="$(brew --repository "$tap")/Formula/freebasic-ng.rb"
+          sed -E "s#https://github.com/${GITHUB_REPOSITORY}/releases/download/[^/\"]+#http://127.0.0.1:${port}#g" \
+            candidate/freebasic-ng.rb > "$formula"
+          ruby -c "$formula"
+          brew audit --strict "$tap/freebasic-ng"
+          brew install "$tap/freebasic-ng"
+          brew test "$tap/freebasic-ng"
+          test -d "$(brew --cellar freebasic-ng)/${{ needs.metadata.outputs.version }}"
+          brew uninstall freebasic-ng
+          brew untap "$tap"
+          kill "$server_pid"
+          trap - EXIT
+
+  aur-qualify:
+    name: Qualify AUR ${{ matrix.architecture }}
+    needs: [metadata, candidate]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: x86_64
+            runner: ubuntu-24.04
+            image: archlinux:base-devel@sha256:a26046b7363dad8e2614858f4313949ae9b05c9c5f31de343a54864b9e20806f
+          - architecture: aarch64
+            runner: ubuntu-24.04-arm
+            image: menci/archlinuxarm@sha256:43a69f30992b0acb0936b4cc4be3ab0b83e71db3fa2dfee371866e877ef40393
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-candidate
+          path: candidate
+
+      - name: Build, install and run both qualified AUR packages
+        shell: bash
+        env:
+          VERSION: ${{ needs.metadata.outputs.version }}
+          IMAGE: ${{ matrix.image }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/aur-work"
+          docker run --rm \
+            --env VERSION \
+            --volume "$GITHUB_WORKSPACE/candidate:/candidate:ro" \
+            --volume "$RUNNER_TEMP/aur-work:/work" \
+            "$IMAGE" bash -euxo pipefail -c '
+              sed -i "/^#DisableSandboxFilesystem/a DisableSandboxFilesystem\\nDisableSandboxSyscalls" /etc/pacman.conf
+              pacman -Syu --noconfirm --needed \
+                base-devel cmake gpm libffi libx11 ncurses ninja python
+              useradd --create-home builder
+
+              qualify() {
+                package_name="$1"
+                generated="$2"
+                work="/work/${package_name}"
+                install -d -o builder -g builder "$work"
+                cp "/candidate/${generated}" "$work/PKGBUILD"
+                sed -i "s#https://github.com/.*/releases/download/[^/]*#file:///candidate#g" "$work/PKGBUILD"
+                chown builder:builder "$work/PKGBUILD"
+                su builder -c "cd \"$work\" && makepkg --cleanbuild --noconfirm"
+                mapfile -t packages < <(find "$work" -maxdepth 1 -type f \
+                  -name "${package_name}-${VERSION}-*.pkg.tar.*" ! -name "*debug*" | sort)
+                test "${#packages[@]}" = 1
+                bsdtar -tf "${packages[0]}" | grep -Fx usr/bin/fbc
+                pacman -U --noconfirm "${packages[0]}"
+                cd /tmp
+                printf "Print \\\"FreeBASIC-NG AUR package smoke\\\"\\n" > smoke.bas
+                fbc smoke.bas -x smoke
+                test "$(./smoke)" = "FreeBASIC-NG AUR package smoke"
+                fbc --version | grep -F "Version ${VERSION}"
+                pacman -Rdd --noconfirm "$package_name"
+              }
+
+              qualify freebasic-ng PKGBUILD.freebasic-ng
+              qualify freebasic-ng-bin PKGBUILD.freebasic-ng-bin
+            '
+
   stage:
     name: Publish the verified prerelease
-    needs: [metadata, candidate]
+    needs: [metadata, candidate, homebrew-qualify, aur-qualify]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
