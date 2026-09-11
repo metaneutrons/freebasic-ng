@@ -17,8 +17,9 @@ dispatch identity may trigger an archive workflow but has neither archive signin
 material nor object-storage access. The Homebrew identity may update only the
 tap. AUR SSH authentication uses pinned host keys and strict host checking.
 
-Every environment currently permits deployments only from `main`. A release
-workflow must perform a read-only preflight before it can write to its channel.
+Every environment permits deployments only from `main` and protected
+`freebasic-ng-v*` release tags. A release workflow must perform a read-only
+preflight before it can write to its channel.
 The Homebrew and APT preflights must mint an installation token and reject it
 unless `/installation/repositories` contains precisely the intended destination
 repository. AUR publication uses the existing package-specific SSH identity

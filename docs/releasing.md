@@ -30,6 +30,11 @@ Bookworm, Homebrew on both macOS architectures, and Arch Linux x86_64/aarch64
 qualification lanes install the generated packages and compile a program with
 `fbc`. Qualification receives no channel credentials.
 
+The dispatch input `promote` defaults to `false`. Setting it to `true` is an
+explicit stable-release decision: only then may the qualified Homebrew and AUR
+metadata be published, the GitHub prerelease be promoted, and the APT archive
+be dispatched. Prerelease tags cannot set that input successfully.
+
 ## Required GitHub configuration
 
 Use the existing `metaneutrons-release-please` App (client ID
