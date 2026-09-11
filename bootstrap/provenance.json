@@ -10,37 +10,37 @@
     "linux-x86_64": {
       "host": "linux-x86_64",
       "files": 145,
-      "sha256": "b4fba608426f8587507cff924dd800e02ff20931d01a62ae710f1cd6f029ad11",
+      "sha256": "9fb0993a53a6ba725574d7db229aefb856577d5ee29af5828938a300b6a0774d",
       "provenance": "Carried from the recorded upstream base and verified as a complete compiler bootstrap in M1."
     },
     "linux-aarch64": {
       "host": "linux-aarch64",
       "files": 145,
-      "sha256": "1f306dff50750d727a99e0025362993c25e980e5e032a0fb52e4cc7c1c8e165d",
+      "sha256": "664ffbcde3bb011d1a3207d889d2dcc092c160ed4e8fd3d16901c3234a855b1a",
       "provenance": "Carried from the recorded upstream base and verified as a complete compiler bootstrap in M1."
     },
     "darwin-x86_64": {
       "host": "darwin-x86_64",
       "files": 145,
-      "sha256": "b6bba476d682077e83dd99910ca85cd0f50de372a6e6fd13a913cb22d9e53eb6",
+      "sha256": "439ed6ee2edfe36af84a0a13389cf49ca47f011be6e0a264df0f9144aef070fe",
       "provenance": "Regenerated in M1 from the FreeBASIC-NG 1.20.0 compiler sources for the native Intel macOS host."
     },
     "darwin-aarch64": {
       "host": "darwin-aarch64",
       "files": 145,
-      "sha256": "181554c57c396975e0eac96f209a53c134c055b4b71c57ecbaf39b3c661fc1cf",
+      "sha256": "f5c83e2f1b388b2c06b6d8b5d3a23cab1fa187e43f8dac41cc74763331eb7611",
       "provenance": "Regenerated in M1 from the FreeBASIC-NG 1.20.0 compiler sources; replaces a bootstrap with a Linux host identity."
     },
     "win64": {
       "host": "win64",
       "files": 145,
-      "sha256": "b36edb8202e0f5cae9ff778bd755b857fe7029e23e7e1ec2c54779e3c3a760df",
+      "sha256": "0454e8d7f76179d03215c7ea81325fe00843bccd6526ed8057b32fe519304258",
       "provenance": "Carried from the recorded upstream base and verified as a complete compiler bootstrap in M1."
     },
     "win32-aarch64": {
       "host": "win32-aarch64",
       "files": 145,
-      "sha256": "9b31c184314d53125926d0af79cd891a9b134e597b7dcea74d311bf12a626a6f",
+      "sha256": "e7aa833e42fa00237f358cdacfc14eb491697551c579487a358f789a10b2ca94",
       "provenance": "Regenerated in M1 from the FreeBASIC-NG 1.20.0 compiler sources for the native Windows ARM64 host."
     }
   }

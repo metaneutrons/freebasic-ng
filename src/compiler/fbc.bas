@@ -766,6 +766,9 @@ end function
 
 private function hLinkFiles( ) as integer
 	dim as string ldcline, dllname, deffile
+	dim as integer coff_linker = _
+		(fbGetOption( FB_COMPOPT_TARGET ) = FB_COMPTARGET_WIN32) and _
+		(fbGetCpuFamily( ) = FB_CPUFAMILY_AARCH64)
 
 	function = FALSE
 
@@ -1049,6 +1052,7 @@ private function hLinkFiles( ) as integer
 			(fbGetOption( FB_COMPOPT_TARGET ) <> FB_COMPTARGET_DARWIN) and _
 			(fbGetOption( FB_COMPOPT_TARGET ) <> FB_COMPTARGET_SOLARIS) and _
 			( fbGetOption( FB_COMPOPT_TARGET ) <> FB_COMPTARGET_JS ) and _
+			(not coff_linker) and _
 			(not fbcIsUsingGoldLinker( )) ) then
 			ldcline += " -T """ + fbc.libpath + (FB_HOST_PATHDIV + "fbextra.x""")
 		end if
@@ -1267,7 +1271,8 @@ private function hLinkFiles( ) as integer
 	'' All libraries are passed inside -( -) so we don't need to worry as
 	'' much about their order and/or listing them repeatedly. (Not supported by Darwin ld)
 	if ( fbGetOption( FB_COMPOPT_TARGET ) <> FB_COMPTARGET_DARWIN ) then
-		if( fbGetOption( FB_COMPOPT_TARGET ) <> FB_COMPTARGET_JS ) then
+		if( (fbGetOption( FB_COMPOPT_TARGET ) <> FB_COMPTARGET_JS) and _
+			(not coff_linker) ) then
 			ldcline += " ""-("""
 		end if
 	end if
@@ -1299,8 +1304,10 @@ private function hLinkFiles( ) as integer
 
 	if (fbGetOption( FB_COMPOPT_TARGET ) <> FB_COMPTARGET_DARWIN) then
 		if( fbGetOption( FB_COMPOPT_TARGET ) <> FB_COMPTARGET_JS ) then
-			'' End of lib group
-			ldcline += " ""-)"""
+			if( not coff_linker ) then
+				'' End of lib group
+				ldcline += " ""-)"""
+			end if
 		else
 			ldcline += " -lfb"
 		end if
