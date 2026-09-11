@@ -4002,11 +4002,16 @@ private function hAssembleModule( byval module as FBCIOFILE ptr ) as integer
 		end select
 
 		if( fbGetOption( FB_COMPOPT_DEBUGINFO ) = FALSE ) then
-			if (fbGetOption( FB_COMPOPT_TARGET ) <> FB_COMPTARGET_DARWIN) then
-				if( fbGetOption( FB_COMPOPT_TARGET ) <> FB_COMPTARGET_JS ) then
-					ln += "--strip-local-absolute "
-				end if
-			endif
+			'' This is a GNU x86 assembler option. The CLANGARM64 toolchain
+			'' provides LLVM's assembler, which rejects it for AArch64.
+			if( (fbGetCpuFamily( ) = FB_CPUFAMILY_X86) orelse _
+			    (fbGetCpuFamily( ) = FB_CPUFAMILY_X86_64) ) then
+				if (fbGetOption( FB_COMPOPT_TARGET ) <> FB_COMPTARGET_DARWIN) then
+					if( fbGetOption( FB_COMPOPT_TARGET ) <> FB_COMPTARGET_JS ) then
+						ln += "--strip-local-absolute "
+					end if
+				endif
+			end if
 		end if
 	end select
 
