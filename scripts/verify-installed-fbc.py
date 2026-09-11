@@ -46,7 +46,7 @@ def main() -> int:
         source = workdir / "smoke.bas"
         output_base = workdir / "smoke"
         source.write_text('Print "FreeBASIC-NG smoke"\n', encoding="utf-8")
-        run([str(executable), str(source), "-x", str(output_base)], cwd=workdir)
+        run([str(executable), "-v", str(source), "-x", str(output_base)], cwd=workdir)
         output = output_base if output_base.exists() else output_base.with_suffix(".exe")
         if not output.is_file():
             raise FileNotFoundError(f"compiler did not produce {output_base} or {output_base}.exe")
