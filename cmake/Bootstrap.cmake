@@ -40,8 +40,13 @@ if(NOT FBC_EXECUTABLE)
         if(FB_BOOTSTRAP_SOURCES)
             find_package(Python3 COMPONENTS Interpreter REQUIRED)
             execute_process(
-                COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/scripts/check-bootstrap-provenance.py"
+                # MSYS Python expects POSIX paths while CMake on native
+                # Windows passes C:/ paths.  Run from the source tree and use
+                # a relative script name so the same invocation works for
+                # both MSYS and native Unix Python.
+                COMMAND "${Python3_EXECUTABLE}" "scripts/check-bootstrap-provenance.py"
                     --target "${FB_TARGET_ID}"
+                WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
                 RESULT_VARIABLE _bootstrap_provenance_result
                 OUTPUT_VARIABLE _bootstrap_provenance_output
                 ERROR_VARIABLE _bootstrap_provenance_error
