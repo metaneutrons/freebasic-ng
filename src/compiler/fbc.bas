@@ -837,6 +837,8 @@ private function hLinkFiles( ) as integer
 			ldcline += "-arch i386 "
 		case FB_CPUFAMILY_X86_64
 			ldcline += "-arch x86_64 "
+		case FB_CPUFAMILY_AARCH64
+			ldcline += "-arch arm64 "
 		case FB_CPUFAMILY_ARM
 			'' fixme: this is clearly too specific
 			ldcline += "-arch armv6 "
@@ -1167,9 +1169,9 @@ private function hLinkFiles( ) as integer
 			ldcline += hFindLib( "crt0.o" )
 		end if
 
-	case FB_COMPTARGET_LINUX, FB_COMPTARGET_DARWIN, _
-		FB_COMPTARGET_FREEBSD, FB_COMPTARGET_OPENBSD, _
-		FB_COMPTARGET_NETBSD, FB_COMPTARGET_DRAGONFLY, FB_COMPTARGET_SOLARIS
+	case FB_COMPTARGET_LINUX, _
+	     FB_COMPTARGET_FREEBSD, FB_COMPTARGET_OPENBSD, _
+	     FB_COMPTARGET_NETBSD, FB_COMPTARGET_DRAGONFLY, FB_COMPTARGET_SOLARIS
 
 		if( fbGetOption( FB_COMPOPT_OUTTYPE ) = FB_OUTTYPE_EXECUTABLE) then
 			if( fbGetOption( FB_COMPOPT_PROFILE ) ) then
@@ -1201,6 +1203,10 @@ private function hLinkFiles( ) as integer
 				ldcline += hFindLib( "crtbegin.o" )
 			end if
 		end if
+
+	case FB_COMPTARGET_DARWIN
+		'' The compiler driver supplies macOS CRT objects and system libraries.
+		'' Passing historical crt1.o/ld-only flags directly breaks current Xcode.
 
 	case FB_COMPTARGET_ANDROID
 		if( fbGetOption( FB_COMPOPT_OUTTYPE ) = FB_OUTTYPE_EXECUTABLE) then
@@ -1328,7 +1334,7 @@ private function hLinkFiles( ) as integer
 	end select
 
 	if( fbGetOption( FB_COMPOPT_TARGET ) = FB_COMPTARGET_DARWIN ) then
-		ldcline += " -macosx_version_min 10.4"
+		ldcline += " -mmacosx-version-min=11.0"
 	end if
 
 	'' This is required for 64-bit modules on *nix-y platforms
@@ -1337,8 +1343,7 @@ private function hLinkFiles( ) as integer
 	select case as const fbGetOption( FB_COMPOPT_TARGET )
 	case FB_COMPTARGET_LINUX, FB_COMPTARGET_FREEBSD, _
 		FB_COMPTARGET_OPENBSD, FB_COMPTARGET_NETBSD, _
-		FB_COMPTARGET_DRAGONFLY, FB_COMPTARGET_SOLARIS, _
-		FB_COMPTARGET_DARWIN
+	     FB_COMPTARGET_DRAGONFLY, FB_COMPTARGET_SOLARIS
 		dim as long outtype = fbGetOption( FB_COMPOPT_OUTTYPE )
 		if outtype = FB_OUTTYPE_EXECUTABLE OrElse outtype = FB_OUTTYPE_DYNAMICLIB Then
 			dim as long cpufamily = fbGetCpuFamily( )
@@ -1409,10 +1414,14 @@ private function hLinkFiles( ) as integer
 		end if
 	#endif
 
-	'' invoke ld
+	'' macOS must link through the compiler driver so that it supplies the SDK,
+	'' CRT objects and current platform linker flags. Other targets keep the
+	'' historical direct-linker path.
 	var ld = FBCTOOL_LD
 	if( fbGetOption( FB_COMPOPT_TARGET ) = FB_COMPTARGET_JS ) then
 		ld = FBCTOOL_EMLD
+	elseif( fbGetOption( FB_COMPOPT_TARGET ) = FB_COMPTARGET_DARWIN ) then
+		ld = FBCTOOL_GCC
 	end if
 
 	if( fbcRunBin( "linking", ld, ldcline ) = FALSE ) then
@@ -4322,7 +4331,8 @@ private sub hAddDefaultLibs( )
 		end if
 
 	case FB_COMPTARGET_DARWIN
-		fbcAddDefLib( "gcc" )
+		'' Modern macOS uses the compiler runtime selected by the Clang driver;
+		'' Apple no longer ships a linkable libgcc.
 		fbcAddDefLib( "System" )
 		fbcAddDefLib( "pthread" )
 		fbcAddDefLib( "ncurses" )

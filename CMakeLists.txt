@@ -24,7 +24,7 @@ if(MSVC)
 endif()
 
 # Options
-option(FB_STANDALONE "Build as self-contained installation" ON)
+option(FB_STANDALONE "Build as self-contained installation" OFF)
 option(FB_BUILD_GFXLIB "Build the graphics library" ON)
 option(FB_BUILD_COMPILER "Build the fbc compiler" ON)
 option(FB_BUILD_TESTS "Build tests" OFF)

@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "generator": {
+    "base_revision": "a160b7f0875bb7431431df6059e0612f38612d3c",
+    "source_tree_sha256": "a1126b14c6ef5b2dda656e5b0b4d2244e65c5e941ed801d2d57721a07da43a40",
+    "version": "1.20.0",
+    "command": "fbc src/compiler/*.bas -m fbc -i inc -e -r -v -target <os> -arch <arch>"
+  },
+  "bootstrap_sources": {
+    "linux-x86_64": {
+      "host": "linux-x86_64",
+      "files": 145,
+      "sha256": "2d3a9283c797c4689797de9f21481669f6f22117f47d3feaca4a54bd06054817",
+      "provenance": "Carried from the recorded upstream base and verified as a complete compiler bootstrap in M1."
+    },
+    "linux-aarch64": {
+      "host": "linux-aarch64",
+      "files": 145,
+      "sha256": "0ff51017b3d31ee557d613841279b4ba210d05a3af313b495e0137abb9558e51",
+      "provenance": "Carried from the recorded upstream base and verified as a complete compiler bootstrap in M1."
+    },
+    "darwin-x86_64": {
+      "host": "darwin-x86_64",
+      "files": 145,
+      "sha256": "09f6bb5a03a1937e97084a501b6bcc5788cbe236668973356ac079c0c5928645",
+      "provenance": "Regenerated in M1 from the FreeBASIC-NG 1.20.0 compiler sources for the native Intel macOS host."
+    },
+    "darwin-aarch64": {
+      "host": "darwin-aarch64",
+      "files": 145,
+      "sha256": "ac7585c19f8deca05bd1598f7a3d49cbd502ecadbd7e1eeb1959e800bee4251a",
+      "provenance": "Regenerated in M1 from the FreeBASIC-NG 1.20.0 compiler sources; replaces a bootstrap with a Linux host identity."
+    },
+    "win64": {
+      "host": "win64",
+      "files": 145,
+      "sha256": "8cf3150f959efa66c1c889b54e018dda8e3dfc9f686384611559f8dffedd1e0f",
+      "provenance": "Carried from the recorded upstream base and verified as a complete compiler bootstrap in M1."
+    },
+    "win32-aarch64": {
+      "host": "win32-aarch64",
+      "files": 145,
+      "sha256": "4c0f1361be03c349771ceb82953147c79137ee22e551637efda5f19545f394d9",
+      "provenance": "Regenerated in M1 from the FreeBASIC-NG 1.20.0 compiler sources for the native Windows ARM64 host."
+    }
+  }
+}
