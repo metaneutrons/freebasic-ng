@@ -21,7 +21,10 @@ def main() -> int:
     parser.add_argument("--expected-host", required=True)
     args = parser.parse_args()
 
-    executable = args.prefix / "bin" / "fbc"
+    # The compiler is invoked again from an isolated temporary directory below.
+    # Resolve the staged path before changing cwd, otherwise a relative --prefix
+    # would point into that temporary directory.
+    executable = (args.prefix / "bin" / "fbc").resolve()
     if not executable.exists():
         executable = executable.with_suffix(".exe")
     if not executable.is_file():
