@@ -6,12 +6,6 @@ name: Release
 # until its host archives and all M2 package channels have been qualified.
 on:
   workflow_dispatch:
-    inputs:
-      promote:
-        description: Promote this qualified candidate to the stable channels
-        required: true
-        default: false
-        type: boolean
 
 permissions:
   contents: read
@@ -29,7 +23,7 @@ jobs:
       version: ${{ steps.identity.outputs.version }}
       tag: ${{ steps.identity.outputs.tag }}
       source_date_epoch: ${{ steps.identity.outputs.source_date_epoch }}
-      promote: ${{ steps.identity.outputs.promote }}
+      is_prerelease: ${{ steps.identity.outputs.is_prerelease }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
         with:
@@ -65,19 +59,15 @@ jobs:
             echo "::error::the tag points to $source_commit, not the checked-out $GITHUB_SHA"
             exit 1
           fi
-          promote='false'
-          if [[ "${{ inputs.promote }}" == true ]]; then
-            if [[ "$tag" != "v${version}" ]]; then
-              echo '::error::a prerelease tag cannot be promoted to stable channels'
-              exit 1
-            fi
-            promote='true'
+          is_prerelease=false
+          if [[ "$tag" == *-* ]]; then
+            is_prerelease=true
           fi
           {
             echo "version=$version"
             echo "tag=$tag"
             echo "source_date_epoch=$(git show -s --format=%ct "$source_commit")"
-            echo "promote=$promote"
+            echo "is_prerelease=$is_prerelease"
           } >> "$GITHUB_OUTPUT"
 
   build:
@@ -647,9 +637,145 @@ jobs:
               qualify freebasic-ng-bin PKGBUILD.freebasic-ng-bin
             '
 
+  preflight-homebrew:
+    name: Preflight Homebrew publication
+    needs: metadata
+    if: needs.metadata.outputs.is_prerelease == 'false'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: release-homebrew
+    env:
+      TAP_REPO: ${{ vars.HOMEBREW_TAP_REPO }}
+    steps:
+      - name: Validate the configured tap coordinates
+        id: tap
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$TAP_REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+            echo '::error::HOMEBREW_TAP_REPO must be owner/repository'
+            exit 1
+          fi
+          echo "owner=${TAP_REPO%%/*}" >> "$GITHUB_OUTPUT"
+          echo "repo=${TAP_REPO##*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Mint a tap-only installation token
+        id: token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.HOMEBREW_APP_CLIENT_ID }}
+          private-key: ${{ secrets.HOMEBREW_APP_PRIVATE_KEY }}
+          owner: ${{ steps.tap.outputs.owner }}
+          repositories: ${{ steps.tap.outputs.repo }}
+          permission-administration: read
+          permission-contents: write
+          permission-pull-requests: write
+          permission-checks: read
+          permission-statuses: read
+
+      - name: Prove the token scope and protected default branch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+        run: |
+          set -euo pipefail
+          mapfile -t reach < <(gh api /installation/repositories --jq '.repositories[].full_name' | sort)
+          if [[ ${#reach[@]} -ne 1 || "${reach[0]}" != "$TAP_REPO" ]]; then
+            echo "::error::the tap token reaches ${#reach[@]} repositories, expected only ${TAP_REPO}"
+            exit 1
+          fi
+          gh api "repos/${TAP_REPO}/branches/main" --jq '.protected' | grep -Fx true
+
+  preflight-aur:
+    name: Preflight AUR publication
+    needs: metadata
+    if: needs.metadata.outputs.is_prerelease == 'false'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: release-aur
+    env:
+      AUR_SOURCE_PACKAGE_NAME: ${{ vars.AUR_SOURCE_PACKAGE_NAME }}
+      AUR_BINARY_PACKAGE_NAME: ${{ vars.AUR_BINARY_PACKAGE_NAME }}
+      AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+      AUR_SSH_KNOWN_HOSTS: ${{ vars.AUR_SSH_KNOWN_HOSTS }}
+    steps:
+      - name: Verify package identities and read-only SSH access
+        shell: bash
+        run: |
+          set -euo pipefail
+          for package in "$AUR_SOURCE_PACKAGE_NAME" "$AUR_BINARY_PACKAGE_NAME"; do
+            [[ "$package" =~ ^[a-z0-9][a-z0-9+._-]*$ ]] || {
+              echo '::error::AUR package names must be lowercase package basenames'; exit 1;
+            }
+          done
+          [[ "$AUR_SOURCE_PACKAGE_NAME" != "$AUR_BINARY_PACKAGE_NAME" ]] || {
+            echo '::error::AUR source and binary package names must differ'; exit 1;
+          }
+          ssh_dir="$RUNNER_TEMP/aur-preflight"
+          install -d -m 0700 "$ssh_dir"
+          trap 'command rm -rf "$ssh_dir"' EXIT
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > "$ssh_dir/aur"
+          printf '%s\n' "$AUR_SSH_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
+          chmod 0600 "$ssh_dir/aur"
+          ssh-keygen -F aur.archlinux.org -f "$ssh_dir/known_hosts" >/dev/null
+          ssh -i "$ssh_dir/aur" -o IdentitiesOnly=yes -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$ssh_dir/known_hosts" \
+            aur@aur.archlinux.org help >/dev/null
+
+  preflight-apt:
+    name: Preflight APT archive dispatch
+    needs: metadata
+    if: needs.metadata.outputs.is_prerelease == 'false'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: release-apt
+    env:
+      ARCHIVE_REPO: metaneutrons/apt-archive
+    steps:
+      - name: Mint an archive-only installation token
+        id: token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.ARCHIVE_DISPATCH_CLIENT_ID }}
+          private-key: ${{ secrets.ARCHIVE_DISPATCH_PRIVATE_KEY }}
+          owner: metaneutrons
+          repositories: apt-archive
+          permission-actions: write
+          permission-contents: read
+
+      - name: Prove the token scope and active archive workflow
+        shell: bash
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+        run: |
+          set -euo pipefail
+          mapfile -t reach < <(gh api /installation/repositories --jq '.repositories[].full_name' | sort)
+          if [[ ${#reach[@]} -ne 1 || "${reach[0]}" != "$ARCHIVE_REPO" ]]; then
+            echo "::error::the archive token reaches ${#reach[@]} repositories, expected only ${ARCHIVE_REPO}"
+            exit 1
+          fi
+          gh api "repos/${ARCHIVE_REPO}/actions/workflows/publish.yml" --jq .state | grep -Fx active
+
   stage:
     name: Publish the verified prerelease
-    needs: [metadata, candidate, homebrew-qualify, aur-qualify]
+    needs:
+      - metadata
+      - candidate
+      - homebrew-qualify
+      - aur-qualify
+      - preflight-homebrew
+      - preflight-aur
+      - preflight-apt
+    if: >-
+      always() &&
+      needs.metadata.result == 'success' &&
+      needs.candidate.result == 'success' &&
+      needs.homebrew-qualify.result == 'success' &&
+      needs.aur-qualify.result == 'success' &&
+      (needs.metadata.outputs.is_prerelease == 'true' ||
+      (needs.preflight-homebrew.result == 'success' &&
+      needs.preflight-aur.result == 'success' &&
+      needs.preflight-apt.result == 'success'))
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -687,8 +813,8 @@ jobs:
 
   publish-homebrew:
     name: Publish the Homebrew formula
-    needs: [metadata, stage]
-    if: needs.metadata.outputs.promote == 'true'
+    needs: [metadata, stage, preflight-homebrew]
+    if: needs.metadata.outputs.is_prerelease == 'false'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     environment: release-homebrew
@@ -722,6 +848,7 @@ jobs:
           private-key: ${{ secrets.HOMEBREW_APP_PRIVATE_KEY }}
           owner: ${{ steps.tap.outputs.owner }}
           repositories: ${{ steps.tap.outputs.repo }}
+          permission-administration: read
           permission-contents: write
           permission-pull-requests: write
           permission-checks: read
@@ -814,6 +941,7 @@ jobs:
           private-key: ${{ secrets.HOMEBREW_APP_PRIVATE_KEY }}
           owner: ${{ steps.tap.outputs.owner }}
           repositories: ${{ steps.tap.outputs.repo }}
+          permission-administration: read
           permission-contents: write
           permission-pull-requests: write
           permission-checks: read
@@ -850,8 +978,8 @@ jobs:
 
   publish-aur:
     name: Publish both AUR packages
-    needs: [metadata, stage, publish-homebrew]
-    if: needs.metadata.outputs.promote == 'true'
+    needs: [metadata, stage, preflight-aur, publish-homebrew]
+    if: needs.metadata.outputs.is_prerelease == 'false'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     environment: release-aur
@@ -951,7 +1079,7 @@ jobs:
   promote:
     name: Promote the fully qualified release
     needs: [metadata, stage, publish-homebrew, publish-aur]
-    if: needs.metadata.outputs.promote == 'true'
+    if: needs.metadata.outputs.is_prerelease == 'false'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -968,8 +1096,8 @@ jobs:
 
   archive-dispatch:
     name: Hand the release to the APT archive
-    needs: [metadata, promote]
-    if: needs.metadata.outputs.promote == 'true'
+    needs: [metadata, preflight-apt, promote]
+    if: needs.metadata.outputs.is_prerelease == 'false'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: release-apt

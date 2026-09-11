@@ -30,10 +30,13 @@ Bookworm, Homebrew on both macOS architectures, and Arch Linux x86_64/aarch64
 qualification lanes install the generated packages and compile a program with
 `fbc`. Qualification receives no channel credentials.
 
-The dispatch input `promote` defaults to `false`. Setting it to `true` is an
-explicit stable-release decision: only then may the qualified Homebrew and AUR
-metadata be published, the GitHub prerelease be promoted, and the APT archive
-be dispatched. Prerelease tags cannot set that input successfully.
+Merging the Release Please version PR is the explicit stable-release decision.
+For a stable `v<version>` tag, the workflow first proves every channel's
+credentials and destination scope without writing, then publishes the verified
+candidate, publishes Homebrew and AUR metadata, promotes the GitHub release,
+and finally dispatches the APT archive. A deliberately planned prerelease tag
+such as `v<version>-m2.1` performs the complete build and package qualification
+but remains a GitHub prerelease and cannot write to package channels.
 
 ## Required GitHub configuration
 
