@@ -3955,6 +3955,13 @@ private function hAssembleModule( byval module as FBCIOFILE ptr ) as integer
 
 	dim as FBCTOOL assembler = FBCTOOL_NONE
 
+	'' The CLANGARM64 MSYS toolchain exposes as.exe as a Clang driver. It
+	'' needs -c, whereas a standalone GNU as does not accept that option.
+	if( (fbGetOption( FB_COMPOPT_TARGET ) = FB_COMPTARGET_WIN32) and _
+	    (fbGetCpuFamily( ) = FB_CPUFAMILY_AARCH64) ) then
+		assembler = FBCTOOL_GCC
+	end if
+
 #ifdef ENABLE_STANDALONE
 	if( assembler = FBCTOOL_NONE ) then
 		if( fbGetOption( FB_COMPOPT_BACKEND ) = FB_BACKEND_CLANG ) then
@@ -3983,7 +3990,7 @@ private function hAssembleModule( byval module as FBCIOFILE ptr ) as integer
 	end if
 
 	select case assembler
-	case FBCTOOL_CLANG
+	case FBCTOOL_CLANG, FBCTOOL_GCC
 		ln += "-c "
 	case else
 		select case( fbGetCpuFamily( ) )
