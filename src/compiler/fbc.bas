@@ -765,7 +765,7 @@ private function fbcIsUsingGoldLinker( ) as integer
 end function
 
 private function hLinkFiles( ) as integer
-	dim as string ldcline, dllname, deffile
+	dim as string ldcline, dllname, deffile, coff_runtime
 	dim as integer coff_linker = _
 		(fbGetOption( FB_COMPOPT_TARGET ) = FB_COMPTARGET_WIN32) and _
 		(fbGetCpuFamily( ) = FB_CPUFAMILY_AARCH64)
@@ -773,6 +773,14 @@ private function hLinkFiles( ) as integer
 	function = FALSE
 
 	hSetOutName( )
+
+	if( coff_linker ) then
+		coff_runtime = fbcQueryCC( " -print-libgcc-file-name" )
+		if( (len( coff_runtime ) = 0) or (hFileExists( coff_runtime ) = FALSE) ) then
+			errReportEx( FB_ERRMSG_FILENOTFOUND, "compiler runtime", -1 )
+			exit function
+		end if
+	end if
 
 	select case( fbGetOption( FB_COMPOPT_TARGET ) )
 	case FB_COMPTARGET_WIN32
@@ -1296,7 +1304,11 @@ private function hLinkFiles( ) as integer
 			'' or .so's against themselves (ld will fail to read in
 			'' its output file...)
 			if ((checkdllname = FALSE) orelse (i->s <> dllname)) then
-				ldcline += " -l" + i->s
+				if( coff_linker and (i->s = "gcc") ) then
+					ldcline += " """ + coff_runtime + """"
+				else
+					ldcline += " -l" + i->s
+				end if
 			end if
 			i = listGetNext(i)
 		wend
