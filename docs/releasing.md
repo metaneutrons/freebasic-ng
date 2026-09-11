@@ -2,7 +2,7 @@
 
 Release Please observes conventional commits on main, opens a version PR and,
 when that PR is merged, creates a draft GitHub release and an immutable
-freebasic-ng-v&lt;version&gt; tag. It authenticates through the existing
+v&lt;version&gt; tag. It authenticates through the existing
 organisation-wide `metaneutrons-release-please` GitHub App; no personal token
 is acceptable. Although that App has a shared parent key and broad
 installation, this workflow requests and verifies an installation token scoped
