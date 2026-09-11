@@ -20,12 +20,28 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    env:
+      RELEASE_PLEASE_CLIENT_ID: ${{ vars.RELEASE_PLEASE_CLIENT_ID }}
+      RELEASE_PLEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
+      - id: configuration
+        name: Check the dedicated GitHub App configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "$RELEASE_PLEASE_CLIENT_ID" && -n "$RELEASE_PLEASE_APP_PRIVATE_KEY" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Release Please is inactive until the dedicated App credentials are set in the release environment."
+          fi
+
       - name: Create scoped release token
         id: app-token
+        if: steps.configuration.outputs.configured == 'true'
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           client-id: ${{ vars.RELEASE_PLEASE_CLIENT_ID }}
@@ -36,6 +52,7 @@ jobs:
       - name: Create or update release pull request
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
+        if: steps.configuration.outputs.configured == 'true'
         with:
           token: ${{ steps.app-token.outputs.token }}
           target-branch: main
