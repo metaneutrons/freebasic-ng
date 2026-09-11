@@ -1,16 +1,28 @@
 name: Release Please
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
 
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release-please:
-    name: Prepare release pull request
+    name: Prepare the release
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     environment: release
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
       - name: Create scoped release token
         id: app-token
@@ -23,8 +35,34 @@ jobs:
 
       - name: Create or update release pull request
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release
         with:
           token: ${{ steps.app-token.outputs.token }}
           target-branch: main
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+  dispatch:
+    name: Start the release pipeline
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: write
+    steps:
+      - name: Dispatch release.yml against the immutable tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          set -euo pipefail
+          for attempt in {1..20}; do
+            gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1 && break
+            if [[ "$attempt" == 20 ]]; then
+              echo "::error::release-please reported $TAG, but the tag does not exist"
+              exit 1
+            fi
+            sleep 5
+          done
+          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$TAG"

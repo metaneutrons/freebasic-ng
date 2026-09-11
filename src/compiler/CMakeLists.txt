@@ -54,7 +54,7 @@ if(FB_BOOTSTRAP_MODE STREQUAL "bootstrap")
     endif()
 
     # Link fbrt0
-    set(FBRT0_OBJ "${CMAKE_BINARY_DIR}/src/rtlib/fbrt0${CMAKE_C_OUTPUT_EXTENSION}")
+    set(FBRT0_OBJ "${CMAKE_BINARY_DIR}/src/rtlib/fbrt0.o")
     target_link_options(fbc PRIVATE "${FBRT0_OBJ}")
     add_dependencies(fbc fbrt0)
 
@@ -128,7 +128,7 @@ else()
         target_link_libraries(fbc PRIVATE advapi32 user32 kernel32)
     endif()
 
-    set(FBRT0_OBJ "${CMAKE_BINARY_DIR}/src/rtlib/fbrt0${CMAKE_C_OUTPUT_EXTENSION}")
+    set(FBRT0_OBJ "${CMAKE_BINARY_DIR}/src/rtlib/fbrt0.o")
     target_link_options(fbc PRIVATE "${FBRT0_OBJ}")
     add_dependencies(fbc fbrt0)
 
