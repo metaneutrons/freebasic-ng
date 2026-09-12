@@ -7,6 +7,7 @@ set(CMAKE_SYSTEM_PROCESSOR x86)
 
 set(CMAKE_C_COMPILER gcc)
 set(CMAKE_C_FLAGS_INIT "-m32")
+set(CMAKE_ASM_FLAGS_INIT "-m32")
 set(CMAKE_EXE_LINKER_FLAGS_INIT "-m32")
 
 # Keep the seed compiler and build tools on the x86_64 build host.  Libraries

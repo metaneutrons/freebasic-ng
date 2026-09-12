@@ -53,7 +53,12 @@ endif()
 
 # Architecture-specific sources (x86 asm helpers, etc.)
 if(FB_TARGET_ARCH STREQUAL "x86" AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/x86")
+    # The x86 runtime supplies fb_CpuDetect in GNU assembler.
     file(GLOB RTLIB_ARCH_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/x86/*.s")
+    # Historical make invokes GCC's preprocessed-assembly mode for .s files.
+    # Keep headers and conditional platform definitions available to them.
+    set_source_files_properties(${RTLIB_ARCH_SOURCES}
+        PROPERTIES COMPILE_OPTIONS "-x;assembler-with-cpp")
 endif()
 
 set(RTLIB_ALL_SOURCES ${RTLIB_COMMON_SOURCES} ${RTLIB_PLATFORM_SOURCES} ${RTLIB_ARCH_SOURCES})
