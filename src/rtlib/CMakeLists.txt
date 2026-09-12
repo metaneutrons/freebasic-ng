@@ -77,6 +77,13 @@ target_compile_options(fb PRIVATE
 set(FB_RT_DEBUG_C_FLAGS)
 set(FB_RT_DEBUG_C_DEFINITIONS)
 set(FB_RT_DEBUG_C_DEFINE_FLAGS)
+# fbrt0 is built by direct compiler commands below, not a CMake target.  Pass
+# the toolchain's C flags explicitly so multilib and other target ABI flags
+# apply to that startup object too.
+set(FB_RT_CMAKE_C_FLAGS)
+if(CMAKE_C_FLAGS)
+    separate_arguments(FB_RT_CMAKE_C_FLAGS NATIVE_COMMAND "${CMAKE_C_FLAGS}")
+endif()
 if(FB_COMPILER_DEBUG)
     # Release presets add -DNDEBUG.  Travis did not, and DEBUG assertions
     # would otherwise disappear while their variables still compile in.
@@ -186,7 +193,8 @@ set(FBRT0_OBJ "${CMAKE_CURRENT_BINARY_DIR}/fbrt0.o")
 
 add_custom_command(
     OUTPUT "${FBRT0_OBJ}"
-    COMMAND ${CMAKE_C_COMPILER} ${FB_RT_DEBUG_C_FLAGS} ${FB_RT_DEBUG_C_DEFINE_FLAGS}
+    COMMAND ${CMAKE_C_COMPILER} ${FB_RT_CMAKE_C_FLAGS}
+        ${FB_RT_DEBUG_C_FLAGS} ${FB_RT_DEBUG_C_DEFINE_FLAGS}
         -c -I "${CMAKE_CURRENT_SOURCE_DIR}" -o "${FBRT0_OBJ}" "${FBRT0_SOURCE}"
     COMMAND_EXPAND_LISTS
     DEPENDS "${FBRT0_SOURCE}"
@@ -199,7 +207,8 @@ if(FB_NEED_PIC)
     set(FBRT0PIC_OBJ "${CMAKE_CURRENT_BINARY_DIR}/fbrt0pic.o")
     add_custom_command(
         OUTPUT "${FBRT0PIC_OBJ}"
-        COMMAND ${CMAKE_C_COMPILER} ${FB_RT_DEBUG_C_FLAGS} ${FB_RT_DEBUG_C_DEFINE_FLAGS}
+        COMMAND ${CMAKE_C_COMPILER} ${FB_RT_CMAKE_C_FLAGS}
+            ${FB_RT_DEBUG_C_FLAGS} ${FB_RT_DEBUG_C_DEFINE_FLAGS}
             -c -fPIC -I "${CMAKE_CURRENT_SOURCE_DIR}" -o "${FBRT0PIC_OBJ}" "${FBRT0_SOURCE}"
         DEPENDS "${FBRT0_SOURCE}"
         COMMENT "Compiling fbrt0pic.o"
