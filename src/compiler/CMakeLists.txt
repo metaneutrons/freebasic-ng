@@ -195,6 +195,10 @@ else()
 
     add_executable(fbc ${_native_compile_sources})
     add_dependencies(fbc fbc_generate)
+    if(FB_NATIVE_COMPILER_OBJECTS)
+        # External object files do not let CMake infer a link language.
+        set_target_properties(fbc PROPERTIES LINKER_LANGUAGE C)
+    endif()
 
     if(_native_backend STREQUAL "gcc" AND NOT FB_NATIVE_COMPILER_OBJECTS)
         target_compile_options(fbc PRIVATE
