@@ -121,6 +121,8 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       AMIGA_GCC_IMAGE: amigadev/m68k-amigaos-gcc@sha256:b18080e6ffca8f793e0f539536a9138e9d2a548ca1a301c7483f43ee15fedfed
+      AMITOOLS_VERSION: 0.8.1
+      MACHINE68K_VERSION: 0.3.0
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -142,6 +144,13 @@ jobs:
           "$RUNNER_TEMP/amiga/bin/m68k-amigaos-gcc" --version | head -1
           test -f "$RUNNER_TEMP/amiga/m68k-amigaos/lib/libamiga.a"
           echo "$RUNNER_TEMP/amiga/bin" >> "$GITHUB_PATH"
+
+      - name: Provision pinned Vamos runner
+        run: |
+          python3 -m venv "$RUNNER_TEMP/vamos"
+          "$RUNNER_TEMP/vamos/bin/pip" install --disable-pip-version-check --no-cache-dir \
+            "amitools[vamos]==$AMITOOLS_VERSION" "machine68k==$MACHINE68K_VERSION"
+          "$RUNNER_TEMP/vamos/bin/vamos" --help >/dev/null
 
       - name: Build native compiler
         run: |
@@ -172,10 +181,9 @@ jobs:
       - name: Run AmigaOS smoke program under Vamos
         run: |
           set -o pipefail
-          docker run --rm \
-            -v "$RUNNER_TEMP/amiga-smoke":/work:ro \
-            "$AMIGA_GCC_IMAGE" \
-            sh -lc 'set -eu; test -f /work/smoke; file /work/smoke >&2; export PATH=/opt/amiga/bin:$PATH; vamos -C 68020 /work/smoke' \
+          test -f "$RUNNER_TEMP/amiga-smoke/smoke"
+          file "$RUNNER_TEMP/amiga-smoke/smoke"
+          "$RUNNER_TEMP/vamos/bin/vamos" -C 68020 "$RUNNER_TEMP/amiga-smoke/smoke" \
             | tee "$RUNNER_TEMP/amiga-smoke-output.txt"
           grep -Fx 'FreeBASIC-NG AmigaOS M3 smoke' "$RUNNER_TEMP/amiga-smoke-output.txt"
 
