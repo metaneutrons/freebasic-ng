@@ -171,12 +171,13 @@ jobs:
 
       - name: Run AmigaOS smoke program under Vamos
         run: |
-          output="$(docker run --rm \
+          set -o pipefail
+          docker run --rm \
             -v "$RUNNER_TEMP/amiga-smoke":/work:ro \
             "$AMIGA_GCC_IMAGE" \
-            sh -lc 'export PATH=/opt/amiga/bin:$PATH; vamos -C 68020 /work/smoke')"
-          printf '%s\n' "$output"
-          grep -Fx 'FreeBASIC-NG AmigaOS M3 smoke' <<<"$output"
+            sh -lc 'set -eu; test -f /work/smoke; file /work/smoke >&2; export PATH=/opt/amiga/bin:$PATH; vamos -C 68020 /work/smoke' \
+            | tee "$RUNNER_TEMP/amiga-smoke-output.txt"
+          grep -Fx 'FreeBASIC-NG AmigaOS M3 smoke' "$RUNNER_TEMP/amiga-smoke-output.txt"
 
   target-generation:
     name: Target generation (C output only)
