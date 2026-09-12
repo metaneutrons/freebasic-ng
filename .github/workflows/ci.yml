@@ -242,7 +242,7 @@ jobs:
             -DFB_BUILD_LEGACY_WARNING_TESTS=ON -DFB_BUILD_LEGACY_SYNTAX_TESTS=ON \
             -DFB_BUILD_LEGACY_DOC_TOOLS=ON -DFB_BUILD_GFXLIB=ON \
             -DFB_DISABLE_X11=ON -DFB_DISABLE_GPM=ON \
-            -DFB_DISABLE_FFI=ON -DFB_DISABLE_OPENGL=ON
+            -DFB_DISABLE_FFI=OFF -DFB_DISABLE_OPENGL=ON
           cmake --build selfhost-build
           ctest --test-dir selfhost-build --output-on-failure
           git diff --exit-code
