@@ -112,6 +112,7 @@ def main() -> int:
             str(args.make),
             "unit-tests",
             f"FBC={fbc_command}",
+            "UNITTEST_RUN_ARGS=--brief-summary",
         ],
         cwd=test_dir,
         log=log_path,
