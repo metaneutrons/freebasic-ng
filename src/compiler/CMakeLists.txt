@@ -115,8 +115,9 @@ else()
     if(FB_NATIVE_COMPILER_OBJECTS)
         # GNU make builds the compiler as separate FreeBASIC modules.  Keep
         # this option for historical ABI verification: it lets the seed fbc
-        # invoke its configured C toolchain for every module, then lets CMake
-        # perform the final link against the CMake-built runtime.
+        # invoke its configured C toolchain (or the x86 GAS backend) for every
+        # module, then lets CMake perform the final link against the
+        # CMake-built runtime.
         set(_native_object_dir "${CMAKE_CURRENT_BINARY_DIR}/native-objects")
         set(_native_compile_sources "")
         foreach(_source IN LISTS _native_copied_bas_sources)

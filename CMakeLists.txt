@@ -44,19 +44,26 @@ option(FB_LEGACY_TEST_DEBUG
     "Pass the historical -g -exx flags to legacy runtime test suites" OFF)
 option(FB_USE_SYSTEM_FBC "Use an existing fbc instead of the bundled bootstrap sources" OFF)
 set(FB_NATIVE_COMPILER_BACKEND "gcc" CACHE STRING
-    "Backend used when a system fbc builds the native compiler (gcc or gas64)")
-set_property(CACHE FB_NATIVE_COMPILER_BACKEND PROPERTY STRINGS gcc gas64)
+    "Backend used when a system fbc builds the native compiler (gcc, gas, or gas64)")
+set_property(CACHE FB_NATIVE_COMPILER_BACKEND PROPERTY STRINGS gcc gas gas64)
 if(NOT FB_NATIVE_COMPILER_BACKEND STREQUAL "gcc" AND
+   NOT FB_NATIVE_COMPILER_BACKEND STREQUAL "gas" AND
    NOT FB_NATIVE_COMPILER_BACKEND STREQUAL "gas64")
     message(FATAL_ERROR
-        "FB_NATIVE_COMPILER_BACKEND must be one of: gcc, gas64")
+        "FB_NATIVE_COMPILER_BACKEND must be one of: gcc, gas, gas64")
 endif()
 option(FB_NATIVE_COMPILER_OBJECTS
     "Compile native compiler modules individually through fbc before CMake links them" OFF)
 if(FB_NATIVE_COMPILER_OBJECTS AND
-   NOT FB_NATIVE_COMPILER_BACKEND STREQUAL "gcc")
+   NOT FB_NATIVE_COMPILER_BACKEND STREQUAL "gcc" AND
+   NOT FB_NATIVE_COMPILER_BACKEND STREQUAL "gas")
     message(FATAL_ERROR
-        "FB_NATIVE_COMPILER_OBJECTS currently requires FB_NATIVE_COMPILER_BACKEND=gcc")
+        "FB_NATIVE_COMPILER_OBJECTS currently requires FB_NATIVE_COMPILER_BACKEND=gcc or gas")
+endif()
+if(FB_NATIVE_COMPILER_BACKEND STREQUAL "gas" AND
+   NOT FB_NATIVE_COMPILER_OBJECTS)
+    message(FATAL_ERROR
+        "FB_NATIVE_COMPILER_BACKEND=gas requires FB_NATIVE_COMPILER_OBJECTS=ON")
 endif()
 
 # The Developer Preview archives use the ordinary Unix-style layout.  A
@@ -82,6 +89,17 @@ if(FB_NATIVE_COMPILER_BACKEND STREQUAL "gas64" AND
         "FB_NATIVE_COMPILER_BACKEND=gas64 currently requires Linux x86_64 with GCC")
 endif()
 
+# The historical 32-bit Travis matrix built compiler modules through the
+# original GAS backend.  CMake supports it only in the matching object mode;
+# generated assembly is not a general native-build path yet.
+if(FB_NATIVE_COMPILER_BACKEND STREQUAL "gas" AND
+   (NOT FB_TARGET_OS STREQUAL "linux" OR
+    NOT FB_TARGET_ARCH STREQUAL "x86" OR
+    NOT CMAKE_C_COMPILER_ID STREQUAL "GNU"))
+    message(FATAL_ERROR
+        "FB_NATIVE_COMPILER_BACKEND=gas currently requires Linux x86 with GCC")
+endif()
+
 # Bootstrap logic (determines how to build fbc)
 if(FB_BUILD_COMPILER)
     include(cmake/Bootstrap.cmake)
@@ -89,6 +107,12 @@ if(FB_BUILD_COMPILER)
        NOT FB_BOOTSTRAP_MODE STREQUAL "native")
         message(FATAL_ERROR
             "FB_NATIVE_COMPILER_BACKEND=gas64 requires a working system fbc; "
+            "configure with -DFB_USE_SYSTEM_FBC=ON")
+    endif()
+    if(FB_NATIVE_COMPILER_BACKEND STREQUAL "gas" AND
+       NOT FB_BOOTSTRAP_MODE STREQUAL "native")
+        message(FATAL_ERROR
+            "FB_NATIVE_COMPILER_BACKEND=gas requires a working system fbc; "
             "configure with -DFB_USE_SYSTEM_FBC=ON")
     endif()
 endif()
