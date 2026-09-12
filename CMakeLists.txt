@@ -51,6 +51,13 @@ if(NOT FB_NATIVE_COMPILER_BACKEND STREQUAL "gcc" AND
     message(FATAL_ERROR
         "FB_NATIVE_COMPILER_BACKEND must be one of: gcc, gas64")
 endif()
+option(FB_NATIVE_COMPILER_OBJECTS
+    "Compile native compiler modules individually through fbc before CMake links them" OFF)
+if(FB_NATIVE_COMPILER_OBJECTS AND
+   NOT FB_NATIVE_COMPILER_BACKEND STREQUAL "gcc")
+    message(FATAL_ERROR
+        "FB_NATIVE_COMPILER_OBJECTS currently requires FB_NATIVE_COMPILER_BACKEND=gcc")
+endif()
 
 # The Developer Preview archives use the ordinary Unix-style layout.  A
 # standalone compiler additionally needs its C toolchain below the prefix, but
