@@ -27,6 +27,11 @@ endif()
 cmake_path(ABSOLUTE_PATH AMIGA_GCC_ROOT NORMALIZE OUTPUT_VARIABLE AMIGA_GCC_ROOT)
 set(AMIGA_GCC_ROOT "${AMIGA_GCC_ROOT}" CACHE PATH
     "amiga-gcc distribution prefix" FORCE)
+
+# CMake evaluates the toolchain file again for compiler ABI try-compiles.
+# Preserve an explicitly supplied prefix in that nested configuration too.
+list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES AMIGA_GCC_ROOT)
+
 set(_amiga_sysroot "${AMIGA_GCC_ROOT}/m68k-amigaos")
 
 foreach(_amiga_tool IN ITEMS m68k-amigaos-gcc m68k-amigaos-ar m68k-amigaos-ranlib)
