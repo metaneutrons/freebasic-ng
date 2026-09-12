@@ -302,23 +302,36 @@ jobs:
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build g++ gcc-multilib libc6-dev-i386 \
+          sudo apt-get install -y cmake ninja-build g++ gcc-multilib g++-multilib \
+            libc6-dev-i386 libcunit1-dev:i386 \
             libncurses-dev libncurses-dev:i386 libx11-dev:i386 libxext-dev:i386 \
             libxpm-dev:i386 libxrandr-dev:i386 libxrender-dev:i386 libffi-dev:i386 \
             libgpm-dev:i386 libaspell-dev:i386 libcurl4-openssl-dev:i386 \
             libpcre2-dev:i386
 
-      - name: Build and stage x64 seed compiler
+      - name: Build verified historical x86 seed compiler
         run: |
-          cmake -S . -B seed-build -G Ninja -DCMAKE_BUILD_TYPE=Release \
-            -DFB_BUILD_GFXLIB=OFF -DFB_DISABLE_X11=ON -DFB_DISABLE_GPM=ON \
-            -DFB_DISABLE_FFI=ON -DFB_DISABLE_OPENGL=ON
-          cmake --build seed-build
-          cmake --install seed-build --prefix seed-stage
+          archive="$RUNNER_TEMP/FreeBASIC-1.05.0-source-bootstrap.tar.xz"
+          bootstrap_dir="$RUNNER_TEMP/FreeBASIC-1.05.0-source-bootstrap"
+          curl --fail --location --retry 3 --retry-delay 2 \
+            --output "$archive" \
+            https://github.com/freebasic/fbc/releases/download/1.05.0/FreeBASIC-1.05.0-source-bootstrap.tar.xz
+          echo "cbf5c28c8cc0d34dd71c50c8f8e574aab7f7a341c39cb952f6434cfecb06d82f  $archive" \
+            | sha256sum --check --status
+          tar -xJf "$archive" -C "$RUNNER_TEMP"
+          printf '%s\n' \
+            'CC = gcc -m32' \
+            'AS = as --32' \
+            'TARGET_ARCH = x86' \
+            'CFLAGS += -DDISABLE_X11 -DDISABLE_GPM -DDISABLE_FFI -DDISABLE_OPENGL' \
+            > "$bootstrap_dir/config.mk"
+          make -C "$bootstrap_dir" -j"$(nproc)" bootstrap
+          file "$bootstrap_dir/bin/fbc" | grep -q 'ELF 32-bit'
+          echo "FBC_SEED_DIR=$bootstrap_dir" >> "$GITHUB_ENV"
 
       - name: Self-host x86 compiler and run historical suites
         run: |
-          PATH="$PWD/seed-stage/bin:$PATH" cmake -S . -B selfhost-build -G Ninja \
+          PATH="$FBC_SEED_DIR/bin:$PATH" cmake -S . -B selfhost-build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release -DFB_USE_SYSTEM_FBC=ON \
             -DCMAKE_TOOLCHAIN_FILE="$PWD/cmake/toolchains/linux-x86.cmake" \
             -DFB_COMPILER_DEBUG=${{ matrix.compiler_debug }} \
@@ -329,6 +342,9 @@ jobs:
             -DFB_DISABLE_X11=ON -DFB_DISABLE_GPM=ON \
             -DFB_DISABLE_FFI=OFF -DFB_DISABLE_OPENGL=ON
           cmake --build selfhost-build
+          test "$(selfhost-build/src/compiler/fbc -print host)" = "linux-x86"
+          test "$(selfhost-build/src/compiler/fbc -print target)" = "linux-x86"
+          file selfhost-build/src/compiler/fbc | grep -q 'ELF 32-bit'
           ctest --test-dir selfhost-build --output-on-failure
           git diff --exit-code
 
