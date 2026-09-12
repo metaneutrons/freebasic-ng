@@ -2,9 +2,9 @@
 """Run the historical unit suite from a CMake-built, staged compiler.
 
 The historical tests makefiles create objects and logs next to their inputs.
-This adapter copies that input tree into the CMake binary tree, so CTest can
-own the execution without modifying the checkout or invoking the root
-makefile.
+This adapter recreates the source layout required by the test suite in the
+CMake binary tree, so CTest can own the execution without modifying the
+checkout or invoking the root makefile.
 """
 
 from __future__ import annotations
@@ -55,6 +55,7 @@ def main() -> int:
     parser.add_argument("--build-dir", required=True, type=Path)
     parser.add_argument("--install-prefix", required=True, type=Path)
     parser.add_argument("--source-tests-dir", required=True, type=Path)
+    parser.add_argument("--source-include-dir", required=True, type=Path)
     parser.add_argument("--work-dir", required=True, type=Path)
     parser.add_argument("--log", required=True, type=Path)
     args = parser.parse_args()
@@ -84,22 +85,33 @@ def main() -> int:
 
     if not args.source_tests_dir.is_dir():
         raise FileNotFoundError(f"legacy tests directory is missing: {args.source_tests_dir}")
-    shutil.copytree(args.source_tests_dir, work_dir)
+    if not args.source_include_dir.is_dir():
+        raise FileNotFoundError(
+            f"legacy compiler include directory is missing: {args.source_include_dir}"
+        )
+
+    # Some historic tests include headers via paths such as
+    # "..\\..\\inc\\fbthread.bi".  Keep tests/ and inc/ as siblings, just as
+    # they are in the source checkout, rather than rewriting that input.
+    test_dir = work_dir / "tests"
+    legacy_include_dir = work_dir / "inc"
+    shutil.copytree(args.source_tests_dir, test_dir)
+    shutil.copytree(args.source_include_dir, legacy_include_dir)
 
     compiler = install_prefix / "bin" / "fbc"
     if not compiler.is_file():
         compiler = compiler.with_suffix(".exe")
-    include_dir = install_prefix / "include" / "freebasic"
-    if not compiler.is_file() or not include_dir.is_dir():
+    compiler_include_dir = install_prefix / "include" / "freebasic"
+    if not compiler.is_file() or not compiler_include_dir.is_dir():
         raise FileNotFoundError("CMake installation did not contain fbc and its include directory")
 
     run(
         [
             str(args.make),
             "unit-tests",
-            f"FBC={compiler} -i {include_dir}",
+            f"FBC={compiler} -i {compiler_include_dir}",
         ],
-        cwd=work_dir,
+        cwd=test_dir,
         log=log_path,
     )
     return 0

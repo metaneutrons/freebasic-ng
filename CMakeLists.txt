@@ -119,6 +119,7 @@ if(FB_BUILD_TESTS OR FB_BUILD_LEGACY_UNIT_TESTS)
                 --build-dir "${CMAKE_BINARY_DIR}"
                 --install-prefix "${_fb_legacy_unit_dir}/stage"
                 --source-tests-dir "${CMAKE_SOURCE_DIR}/tests"
+                --source-include-dir "${CMAKE_SOURCE_DIR}/inc"
                 --work-dir "${_fb_legacy_unit_dir}/work"
                 --log "${_fb_legacy_unit_dir}/unit-tests.log"
         )
