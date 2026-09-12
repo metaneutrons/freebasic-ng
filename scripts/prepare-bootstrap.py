@@ -47,6 +47,12 @@ def prepare_file(path: Path, *, source_version: str, version: str,
                  parts: dict[str, str]) -> str:
     text = path.read_text(encoding="utf-8")
 
+    # A freshly regenerated bootstrap already exposes the requested version.
+    # Copy it byte-for-byte: reconstructing generated string lengths here would
+    # be needlessly lossy (the bootstrap generator owns those details).
+    if source_version == version:
+        return text
+
     if path.name == "fbc.c":
         prefix = "FreeBASIC Compiler - Version "
         pattern = re.compile(
