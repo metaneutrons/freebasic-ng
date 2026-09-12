@@ -325,6 +325,10 @@ jobs:
             'TARGET_ARCH = x86' \
             'CFLAGS += -DDISABLE_X11 -DDISABLE_GPM -DDISABLE_FFI -DDISABLE_OPENGL' \
             > "$bootstrap_dir/config.mk"
+          # The 1.05 bootstrap target omits rtlib from bootstrap/fbc's
+          # prerequisites.  Build the runtime first so parallel make cannot
+          # link fbc against a half-written libfb.a.
+          make -C "$bootstrap_dir" -j"$(nproc)" rtlib gfxlib2
           make -C "$bootstrap_dir" -j"$(nproc)" bootstrap
           file "$bootstrap_dir/bin/fbc" | grep -q 'ELF 32-bit'
           echo "FBC_SEED_DIR=$bootstrap_dir" >> "$GITHUB_ENV"
