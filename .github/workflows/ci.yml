@@ -221,7 +221,7 @@ jobs:
           python3 scripts/check-bootstrap-provenance.py --target linux-x86_64
 
       - name: Install build dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++ libncurses-dev libx11-dev libgpm-dev libaspell-dev libcurl4-openssl-dev libpcre2-dev
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++ libncurses-dev libx11-dev libxext-dev libxpm-dev libxrandr-dev libxrender-dev libffi-dev libgpm-dev libaspell-dev libcurl4-openssl-dev libpcre2-dev
 
       - name: Build and stage seed compiler
         run: |
