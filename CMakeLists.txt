@@ -30,6 +30,8 @@ option(FB_BUILD_COMPILER "Build the fbc compiler" ON)
 option(FB_BUILD_TESTS "Build tests" OFF)
 option(FB_BUILD_LEGACY_UNIT_TESTS
     "Run the historical fbcunit suite through CTest" OFF)
+option(FB_VERIFY_LEGACY_UNIT_FAILURE_DETECTION
+    "Verify that the historical fbcunit adapter rejects an injected failing fixture" OFF)
 option(FB_BUILD_LEGACY_LOG_TESTS
     "Run the historical log-test suite through CTest" OFF)
 option(FB_BUILD_LEGACY_WARNING_TESTS
@@ -141,7 +143,8 @@ if(FB_BUILD_COMPILER)
     add_subdirectory(src/compiler)
 endif()
 
-if(FB_BUILD_TESTS OR FB_BUILD_LEGACY_UNIT_TESTS OR FB_BUILD_LEGACY_LOG_TESTS OR
+if(FB_BUILD_TESTS OR FB_BUILD_LEGACY_UNIT_TESTS OR
+   FB_VERIFY_LEGACY_UNIT_FAILURE_DETECTION OR FB_BUILD_LEGACY_LOG_TESTS OR
    FB_BUILD_LEGACY_WARNING_TESTS OR FB_BUILD_LEGACY_SYNTAX_TESTS OR
    FB_BUILD_LEGACY_DOC_TOOLS)
     enable_testing()
@@ -220,6 +223,41 @@ if(FB_BUILD_TESTS OR FB_BUILD_LEGACY_UNIT_TESTS OR FB_BUILD_LEGACY_LOG_TESTS OR
         )
         set_tests_properties(legacy.unit PROPERTIES
             LABELS "legacy;unit"
+            TIMEOUT 1800
+        )
+    endif()
+
+    if(FB_VERIFY_LEGACY_UNIT_FAILURE_DETECTION)
+        if(NOT FB_BUILD_COMPILER)
+            message(FATAL_ERROR
+                "FB_VERIFY_LEGACY_UNIT_FAILURE_DETECTION requires FB_BUILD_COMPILER=ON")
+        endif()
+        if(NOT FB_BUILD_GFXLIB)
+            message(FATAL_ERROR
+                "FB_VERIFY_LEGACY_UNIT_FAILURE_DETECTION requires FB_BUILD_GFXLIB=ON")
+        endif()
+
+        find_package(Python3 COMPONENTS Interpreter REQUIRED)
+        find_program(FB_LEGACY_TEST_MAKE NAMES gmake make REQUIRED)
+        set(_fb_legacy_unit_negative_dir "${CMAKE_BINARY_DIR}/tests/legacy-unit-negative")
+        add_test(
+            NAME legacy.unit-negative
+            COMMAND "${Python3_EXECUTABLE}"
+                "${CMAKE_SOURCE_DIR}/scripts/run-legacy-unit-tests.py"
+                --cmake "${CMAKE_COMMAND}"
+                --make "${FB_LEGACY_TEST_MAKE}"
+                --build-dir "${CMAKE_BINARY_DIR}"
+                --install-prefix "${_fb_legacy_unit_negative_dir}/stage"
+                --source-tests-dir "${CMAKE_SOURCE_DIR}/tests"
+                --source-include-dir "${CMAKE_SOURCE_DIR}/inc"
+                --work-dir "${_fb_legacy_unit_negative_dir}/work"
+                --log "${_fb_legacy_unit_negative_dir}/unit-tests.log"
+                --inject-failing-fixture
+                --expect-failure
+                ${_fb_legacy_runtime_test_fbc_args}
+        )
+        set_tests_properties(legacy.unit-negative PROPERTIES
+            LABELS "legacy;unit;negative"
             TIMEOUT 1800
         )
     endif()
