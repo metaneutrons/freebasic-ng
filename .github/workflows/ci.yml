@@ -135,7 +135,8 @@ jobs:
         if: matrix.native_unit_suite && matrix.family == 'unix'
         run: |
           if [ "${{ matrix.expected_host }}" = "darwin-x86_64" ]; then
-            export LIBRARY_PATH="$(brew --prefix libffi)/lib${LIBRARY_PATH:+:$LIBRARY_PATH}"
+            LIBRARY_PATH="$(brew --prefix libffi)/lib${LIBRARY_PATH:+:$LIBRARY_PATH}"
+            export LIBRARY_PATH
           fi
           PATH="$PWD/stage/bin:$PATH" cmake -S . -B selfhost-build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release -DFB_USE_SYSTEM_FBC=ON \
