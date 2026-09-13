@@ -159,11 +159,11 @@ jobs:
           cmake --build selfhost-build
           test "$(selfhost-build/src/compiler/fbc.exe -print host)" = "${{ matrix.expected_host }}"
           ctest --test-dir selfhost-build --output-on-failure
-          # MSYS Git defaults to autocrlf=true although actions/checkout
-          # materializes this tree with LF.  Compare it with the checkout's
-          # actual line-ending policy so this detects generated source changes
-          # instead of reporting every text file as a CRLF-only difference.
-          git -c core.autocrlf=false diff --exit-code
+          # setup-msys2's Git sees CRLF worktree files although actions/checkout
+          # populated the index with LF. Keep the dirty-worktree gate, but
+          # ignore only that CR-at-EOL conversion rather than every whitespace
+          # difference.
+          git diff --ignore-cr-at-eol --exit-code
 
   darwin-aarch64-selfhost:
     name: Self-host Darwin ARM64
