@@ -47,7 +47,7 @@ extern "c"
 #ifdef __FB_64BIT__
 	'' MinGW-w64 exposes the standard streams through the UCRT-compatible
 	'' accessor. __iob_func is absent from its ARM64 import library.
-	declare function __acrt_iob_func(byval index as uinteger) as FILE ptr
+	declare function __acrt_iob_func(byval index as ulong) as FILE ptr
 	#define stdin __acrt_iob_func(STDIN_FILENO)
 	#define stdout __acrt_iob_func(STDOUT_FILENO)
 	#define stderr __acrt_iob_func(STDERR_FILENO)
