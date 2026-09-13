@@ -99,26 +99,48 @@ endif()
 target_compile_options(fb PRIVATE ${FB_RT_DEBUG_C_FLAGS})
 target_compile_definitions(fb PRIVATE ${FB_RT_DEBUG_C_DEFINITIONS})
 
-target_compile_definitions(fb PRIVATE
-    $<$<PLATFORM_ID:Darwin>:DISABLE_GPM>
-    $<$<PLATFORM_ID:Darwin>:DISABLE_FFI>
-)
-
 # Disable optional features that require extra dependencies
+# Darwin intentionally defaults to no FFI.  Keep that safe default without
+# overriding an explicit -DFB_DISABLE_FFI=OFF: the native unit suite and
+# downstream packagers need to be able to opt in when libffi is available.
+set(_fb_disable_ffi_default OFF)
+if(FB_TARGET_OS STREQUAL "darwin")
+    set(_fb_disable_ffi_default ON)
+endif()
+
 # Users can override these with -DFB_DISABLE_X11=OFF etc.
 option(FB_DISABLE_X11 "Build without X11 support" OFF)
 option(FB_DISABLE_GPM "Build without GPM mouse support" OFF)
-option(FB_DISABLE_FFI "Build without libffi (disables ThreadCall)" OFF)
+option(FB_DISABLE_FFI "Build without libffi (disables ThreadCall)" ${_fb_disable_ffi_default})
 option(FB_DISABLE_OPENGL "Build without OpenGL support" OFF)
 
 if(FB_TARGET_OS STREQUAL "darwin")
-    # Darwin defaults: no GPM, no FFI, no X11 unless XQuartz
+    # Darwin defaults: no GPM and no X11 unless XQuartz.
     set(FB_DISABLE_GPM ON)
-    set(FB_DISABLE_FFI ON)
     option(FB_ENABLE_XQUARTZ "Build with XQuartz X11 support" OFF)
     if(NOT FB_ENABLE_XQUARTZ)
         set(FB_DISABLE_X11 ON)
     endif()
+endif()
+
+set(FB_FFI_INCLUDE_DIR)
+if(NOT FB_DISABLE_FFI)
+    find_path(FB_FFI_INCLUDE_DIR NAMES ffi.h
+        HINTS
+            "$ENV{FB_FFI_ROOT}"
+            "$ENV{HOMEBREW_PREFIX}/opt/libffi"
+            "/opt/homebrew/opt/libffi"
+            "/usr/local/opt/libffi"
+        PATH_SUFFIXES include)
+    if(NOT FB_FFI_INCLUDE_DIR)
+        message(FATAL_ERROR
+            "FB_DISABLE_FFI=OFF requires libffi headers; install libffi or "
+            "configure with -DFB_DISABLE_FFI=ON")
+    endif()
+endif()
+
+if(FB_FFI_INCLUDE_DIR)
+    target_include_directories(fb PRIVATE "${FB_FFI_INCLUDE_DIR}")
 endif()
 
 if(FB_DISABLE_X11)
@@ -137,7 +159,9 @@ endif()
 # --- Threadsafe variant: libfbmt ---
 if(NOT WIN32 OR NOT FB_TARGET_OS STREQUAL "dos")
     add_library(fbmt STATIC ${RTLIB_ALL_SOURCES})
-    target_include_directories(fbmt PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+    target_include_directories(fbmt PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        ${FB_FFI_INCLUDE_DIR})
     target_compile_options(fbmt PRIVATE
         -Wfatal-errors -O2
         -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables
@@ -164,7 +188,9 @@ endif()
 # --- PIC variants for non-x86 unix ---
 if(FB_NEED_PIC)
     add_library(fbpic STATIC ${RTLIB_ALL_SOURCES})
-    target_include_directories(fbpic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+    target_include_directories(fbpic PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        ${FB_FFI_INCLUDE_DIR})
     target_compile_options(fbpic PRIVATE
         -fPIC -Wfatal-errors -O2
         -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables

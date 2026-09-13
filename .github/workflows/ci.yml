@@ -46,6 +46,7 @@ jobs:
               mingw-w64-x86_64-cmake
               mingw-w64-x86_64-ninja
               mingw-w64-x86_64-gcc
+              mingw-w64-x86_64-libffi
               make
               python
           - name: win32-aarch64
@@ -58,6 +59,7 @@ jobs:
               mingw-w64-clang-aarch64-cmake
               mingw-w64-clang-aarch64-ninja
               mingw-w64-clang-aarch64-gcc
+              mingw-w64-clang-aarch64-libffi
               make
               python
 
@@ -77,11 +79,11 @@ jobs:
 
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libncurses-dev libx11-dev libgpm-dev
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libncurses-dev libffi-dev libx11-dev libxext-dev libxpm-dev libxrandr-dev libxrender-dev libgpm-dev
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
-        run: brew install cmake ninja
+        run: brew install cmake ninja libffi
 
       - name: Setup MSYS2 (Windows)
         if: matrix.family == 'windows'
@@ -130,11 +132,14 @@ jobs:
       - name: Self-host and run native unit suite (Unix)
         if: matrix.native_unit_suite && matrix.family == 'unix'
         run: |
+          if [ "${{ matrix.expected_host }}" = "darwin-x86_64" ]; then
+            export LIBRARY_PATH="$(brew --prefix libffi)/lib${LIBRARY_PATH:+:$LIBRARY_PATH}"
+          fi
           PATH="$PWD/stage/bin:$PATH" cmake -S . -B selfhost-build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release -DFB_USE_SYSTEM_FBC=ON \
             -DFB_BUILD_LEGACY_UNIT_TESTS=ON -DFB_BUILD_GFXLIB=ON \
             -DFB_DISABLE_X11=ON -DFB_DISABLE_GPM=ON \
-            -DFB_DISABLE_FFI=ON -DFB_DISABLE_OPENGL=ON
+            -DFB_DISABLE_FFI=OFF -DFB_DISABLE_OPENGL=ON
           cmake --build selfhost-build
           test "$(selfhost-build/src/compiler/fbc -print host)" = "${{ matrix.expected_host }}"
           ctest --test-dir selfhost-build --output-on-failure
@@ -148,7 +153,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release -DFB_USE_SYSTEM_FBC=ON \
             -DFB_BUILD_LEGACY_UNIT_TESTS=ON -DFB_BUILD_GFXLIB=ON \
             -DFB_DISABLE_X11=ON -DFB_DISABLE_GPM=ON \
-            -DFB_DISABLE_FFI=ON -DFB_DISABLE_OPENGL=ON
+            -DFB_DISABLE_FFI=OFF -DFB_DISABLE_OPENGL=ON
           cmake --build selfhost-build
           test "$(selfhost-build/src/compiler/fbc.exe -print host)" = "${{ matrix.expected_host }}"
           ctest --test-dir selfhost-build --output-on-failure
@@ -562,7 +567,7 @@ jobs:
 
       - name: Build native producer
         run: |
-          sudo apt-get update && sudo apt-get install -y cmake ninja-build libncurses-dev libx11-dev libgpm-dev
+          sudo apt-get update && sudo apt-get install -y cmake ninja-build libncurses-dev libffi-dev libx11-dev libgpm-dev
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DFB_BUILD_GFXLIB=OFF
           cmake --build build
 

@@ -164,6 +164,17 @@ else()
         set(_native_compile_sources ${_generated_backend_files})
         if(FB_USING_CLANG AND _native_backend STREQUAL "gcc")
             find_package(Python3 COMPONENTS Interpreter REQUIRED)
+            # CMake passes native C:/ paths to custom commands, while the
+            # CLANGARM64 Python executable is an MSYS program. Give it a
+            # script path relative to the compiler build directory, as in the
+            # bootstrap-mode computed-goto preparation above.
+            file(REAL_PATH "${CMAKE_CURRENT_BINARY_DIR}"
+                _native_fix_working_directory)
+            file(REAL_PATH "${CMAKE_SOURCE_DIR}/cmake/fix_computed_goto.py"
+                _native_fix_script_absolute)
+            file(RELATIVE_PATH _native_fix_script
+                "${_native_fix_working_directory}"
+                "${_native_fix_script_absolute}")
             set(_native_fixed_sources "")
             foreach(_src ${_generated_backend_files})
                 get_filename_component(_name "${_src}" NAME)
@@ -175,9 +186,9 @@ else()
                             "${CMAKE_CURRENT_BINARY_DIR}/native-fixed"
                     COMMAND ${CMAKE_COMMAND} -E copy "${_src}" "${_fixed}"
                     COMMAND ${Python3_EXECUTABLE}
-                            "${CMAKE_SOURCE_DIR}/cmake/fix_computed_goto.py"
+                            "${_native_fix_script}"
                             "${_fixed_relative}"
-                    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+                    WORKING_DIRECTORY "${_native_fix_working_directory}"
                     DEPENDS "${_src}" "${CMAKE_SOURCE_DIR}/cmake/fix_computed_goto.py"
                     COMMENT "Preparing ${_name} for clang"
                     VERBATIM
