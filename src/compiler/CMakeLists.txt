@@ -203,31 +203,46 @@ else()
     if(_native_gas_object_link)
         # The historical x86 build asked fbc to link the compiler objects.
         # Its direct GNU ld invocation is materially different from CMake's
-        # compiler-driver link.  Give that linker a private prefix containing
-        # CMake's freshly built runtime, so this remains a CMake build rather
-        # than falling back to the root makefile.
+        # compiler-driver link.  The first bootstrap generation must retain
+        # the seed runtime, exactly as Travis did.  The second generation gets
+        # a private prefix containing CMake's freshly built runtime, so the
+        # final compiler remains a CMake build rather than falling back to the
+        # root makefile.
         set(_native_link_prefix "${CMAKE_CURRENT_BINARY_DIR}/native-link-runtime")
         set(_native_link_libdir "${_native_link_prefix}/lib/freebasic/${FB_TARGET_ID}")
         set(_native_fbc "${CMAKE_CURRENT_BINARY_DIR}/fbc")
-        add_custom_command(
-            OUTPUT "${_native_fbc}"
-            COMMAND ${CMAKE_COMMAND} -E make_directory "${_native_link_libdir}"
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:fb>"
-                    "${_native_link_libdir}/libfb.a"
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${FBRT0_OBJ}"
-                    "${_native_link_libdir}/fbrt0.o"
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                    "${CMAKE_SOURCE_DIR}/lib/fbextra.x"
-                    "${_native_link_libdir}/fbextra.x"
-            COMMAND ${FBC_EXECUTABLE} -prefix "${_native_link_prefix}"
-                    -target ${FB_TARGET_ID} -e -m fbc -w pedantic
-                    -x "${_native_fbc}" ${_native_compile_sources}
-            DEPENDS fbc_generate fb fbrt0
-                    "${CMAKE_SOURCE_DIR}/lib/fbextra.x"
-            COMMENT "Linking native x86 GAS compiler through fbc"
-            COMMAND_EXPAND_LISTS
-            VERBATIM
-        )
+        if(FB_NATIVE_COMPILER_LINK_WITH_SEED_RUNTIME)
+            add_custom_command(
+                OUTPUT "${_native_fbc}"
+                COMMAND ${FBC_EXECUTABLE} -target ${FB_TARGET_ID}
+                        -e -m fbc -w pedantic -x "${_native_fbc}"
+                        ${_native_compile_sources}
+                DEPENDS fbc_generate
+                COMMENT "Linking native x86 GAS bootstrap compiler through fbc"
+                COMMAND_EXPAND_LISTS
+                VERBATIM
+            )
+        else()
+            add_custom_command(
+                OUTPUT "${_native_fbc}"
+                COMMAND ${CMAKE_COMMAND} -E make_directory "${_native_link_libdir}"
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:fb>"
+                        "${_native_link_libdir}/libfb.a"
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different "${FBRT0_OBJ}"
+                        "${_native_link_libdir}/fbrt0.o"
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                        "${CMAKE_SOURCE_DIR}/lib/fbextra.x"
+                        "${_native_link_libdir}/fbextra.x"
+                COMMAND ${FBC_EXECUTABLE} -prefix "${_native_link_prefix}"
+                        -target ${FB_TARGET_ID} -e -m fbc -w pedantic
+                        -x "${_native_fbc}" ${_native_compile_sources}
+                DEPENDS fbc_generate fb fbrt0
+                        "${CMAKE_SOURCE_DIR}/lib/fbextra.x"
+                COMMENT "Linking native x86 GAS compiler through fbc"
+                COMMAND_EXPAND_LISTS
+                VERBATIM
+            )
+        endif()
         # A custom target named fbc would collide with the generated fbc
         # executable path in Ninja.  The narrow native-GAS path has no CMake
         # executable target because fbc itself performs the final link.

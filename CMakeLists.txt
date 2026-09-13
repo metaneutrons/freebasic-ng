@@ -54,6 +54,8 @@ if(NOT FB_NATIVE_COMPILER_BACKEND STREQUAL "gcc" AND
 endif()
 option(FB_NATIVE_COMPILER_OBJECTS
     "Compile native compiler modules individually through fbc before CMake links them" OFF)
+option(FB_NATIVE_COMPILER_LINK_WITH_SEED_RUNTIME
+    "Link the native x86 GAS bootstrap compiler through the seed runtime" OFF)
 if(FB_NATIVE_COMPILER_OBJECTS AND
    NOT FB_NATIVE_COMPILER_BACKEND STREQUAL "gcc" AND
    NOT FB_NATIVE_COMPILER_BACKEND STREQUAL "gas")
@@ -64,6 +66,12 @@ if(FB_NATIVE_COMPILER_BACKEND STREQUAL "gas" AND
    NOT FB_NATIVE_COMPILER_OBJECTS)
     message(FATAL_ERROR
         "FB_NATIVE_COMPILER_BACKEND=gas requires FB_NATIVE_COMPILER_OBJECTS=ON")
+endif()
+if(FB_NATIVE_COMPILER_LINK_WITH_SEED_RUNTIME AND
+   (NOT FB_NATIVE_COMPILER_BACKEND STREQUAL "gas" OR
+    NOT FB_NATIVE_COMPILER_OBJECTS))
+    message(FATAL_ERROR
+        "FB_NATIVE_COMPILER_LINK_WITH_SEED_RUNTIME requires native x86 GAS objects")
 endif()
 
 # The Developer Preview archives use the ordinary Unix-style layout.  A
