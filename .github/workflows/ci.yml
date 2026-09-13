@@ -159,7 +159,11 @@ jobs:
           cmake --build selfhost-build
           test "$(selfhost-build/src/compiler/fbc.exe -print host)" = "${{ matrix.expected_host }}"
           ctest --test-dir selfhost-build --output-on-failure
-          git diff --exit-code
+          # MSYS Git defaults to autocrlf=true although actions/checkout
+          # materializes this tree with LF.  Compare it with the checkout's
+          # actual line-ending policy so this detects generated source changes
+          # instead of reporting every text file as a CRLF-only difference.
+          git -c core.autocrlf=false diff --exit-code
 
   darwin-aarch64-selfhost:
     name: Self-host Darwin ARM64
