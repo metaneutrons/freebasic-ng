@@ -228,7 +228,10 @@ else()
             COMMAND_EXPAND_LISTS
             VERBATIM
         )
-        add_custom_target(fbc ALL DEPENDS "${_native_fbc}")
+        # A custom target named fbc would collide with the generated fbc
+        # executable path in Ninja.  The narrow native-GAS path has no CMake
+        # executable target because fbc itself performs the final link.
+        add_custom_target(fbc_native ALL DEPENDS "${_native_fbc}")
     else()
         add_executable(fbc ${_native_compile_sources})
         add_dependencies(fbc fbc_generate)
