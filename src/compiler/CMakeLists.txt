@@ -194,48 +194,88 @@ else()
 
     add_custom_target(fbc_generate DEPENDS ${_native_compile_sources})
 
-    add_executable(fbc ${_native_compile_sources})
-    add_dependencies(fbc fbc_generate)
-    if(FB_NATIVE_COMPILER_OBJECTS)
-        # External object files do not let CMake infer a link language.
-        set_target_properties(fbc PROPERTIES LINKER_LANGUAGE C)
-    endif()
-
-    if(_native_backend STREQUAL "gcc" AND NOT FB_NATIVE_COMPILER_OBJECTS)
-        target_compile_options(fbc PRIVATE
-            -nostdinc
-            ${FB_BOOTSTRAP_C_FLAGS}
-            ${FB_BOOTSTRAP_C_WARNINGS}
-            -O2
-        )
-    else()
-        # fbc writes GNU assembler with a .asm extension.  GCC only infers an
-        # assembler input language from .s/.S, so select it explicitly.
-        target_compile_options(fbc PRIVATE
-            "$<$<COMPILE_LANGUAGE:ASM>:-x>"
-            "$<$<COMPILE_LANGUAGE:ASM>:assembler>"
-        )
-        # The historical gas64 path links with ld directly, producing a
-        # non-PIE executable.  Its raw assembler is not compiled with GCC's
-        # PIE defaults, so retain that ABI when CMake links through GCC.
-        target_link_options(fbc PRIVATE -no-pie)
-    endif()
-
-    target_link_libraries(fbc PRIVATE fb)
-
-    if(APPLE)
-        target_link_libraries(fbc PRIVATE "-lncurses" "-lm" "-lpthread")
-    elseif(UNIX)
-        target_link_libraries(fbc PRIVATE ncurses m pthread)
-    elseif(WIN32)
-        target_link_libraries(fbc PRIVATE advapi32 user32 kernel32)
-    endif()
-
     set(FBRT0_OBJ "${CMAKE_BINARY_DIR}/src/rtlib/fbrt0.o")
-    target_link_options(fbc PRIVATE "${FBRT0_OBJ}")
-    add_dependencies(fbc fbrt0)
+    set(_native_gas_object_link FALSE)
+    if(_native_backend STREQUAL "gas" AND FB_NATIVE_COMPILER_OBJECTS)
+        set(_native_gas_object_link TRUE)
+    endif()
+
+    if(_native_gas_object_link)
+        # The historical x86 build asked fbc to link the compiler objects.
+        # Its direct GNU ld invocation is materially different from CMake's
+        # compiler-driver link.  Give that linker a private prefix containing
+        # CMake's freshly built runtime, so this remains a CMake build rather
+        # than falling back to the root makefile.
+        set(_native_link_prefix "${CMAKE_CURRENT_BINARY_DIR}/native-link-runtime")
+        set(_native_link_libdir "${_native_link_prefix}/lib/freebasic/${FB_TARGET_ID}")
+        set(_native_fbc "${CMAKE_CURRENT_BINARY_DIR}/fbc")
+        add_custom_command(
+            OUTPUT "${_native_fbc}"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${_native_link_libdir}"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:fb>"
+                    "${_native_link_libdir}/libfb.a"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${FBRT0_OBJ}"
+                    "${_native_link_libdir}/fbrt0.o"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${CMAKE_SOURCE_DIR}/lib/fbextra.x"
+                    "${_native_link_libdir}/fbextra.x"
+            COMMAND ${FBC_EXECUTABLE} -prefix "${_native_link_prefix}"
+                    -target ${FB_TARGET_ID} -e -m fbc -w pedantic
+                    -x "${_native_fbc}" ${_native_compile_sources}
+            DEPENDS fbc_generate fb fbrt0
+                    "${CMAKE_SOURCE_DIR}/lib/fbextra.x"
+            COMMENT "Linking native x86 GAS compiler through fbc"
+            COMMAND_EXPAND_LISTS
+            VERBATIM
+        )
+        add_custom_target(fbc ALL DEPENDS "${_native_fbc}")
+    else()
+        add_executable(fbc ${_native_compile_sources})
+        add_dependencies(fbc fbc_generate)
+        if(FB_NATIVE_COMPILER_OBJECTS)
+            # External object files do not let CMake infer a link language.
+            set_target_properties(fbc PROPERTIES LINKER_LANGUAGE C)
+        endif()
+
+        if(_native_backend STREQUAL "gcc" AND NOT FB_NATIVE_COMPILER_OBJECTS)
+            target_compile_options(fbc PRIVATE
+                -nostdinc
+                ${FB_BOOTSTRAP_C_FLAGS}
+                ${FB_BOOTSTRAP_C_WARNINGS}
+                -O2
+            )
+        else()
+            # fbc writes GNU assembler with a .asm extension.  GCC only infers an
+            # assembler input language from .s/.S, so select it explicitly.
+            target_compile_options(fbc PRIVATE
+                "$<$<COMPILE_LANGUAGE:ASM>:-x>"
+                "$<$<COMPILE_LANGUAGE:ASM>:assembler>"
+            )
+            # The historical gas64 path links with ld directly, producing a
+            # non-PIE executable.  Its raw assembler is not compiled with GCC's
+            # PIE defaults, so retain that ABI when CMake links through GCC.
+            target_link_options(fbc PRIVATE -no-pie)
+        endif()
+
+        target_link_libraries(fbc PRIVATE fb)
+
+        if(APPLE)
+            target_link_libraries(fbc PRIVATE "-lncurses" "-lm" "-lpthread")
+        elseif(UNIX)
+            target_link_libraries(fbc PRIVATE ncurses m pthread)
+        elseif(WIN32)
+            target_link_libraries(fbc PRIVATE advapi32 user32 kernel32)
+        endif()
+
+        target_link_options(fbc PRIVATE "${FBRT0_OBJ}")
+        add_dependencies(fbc fbrt0)
+    endif()
 
 endif()
 
 # --- Installation ---
-install(TARGETS fbc RUNTIME DESTINATION "${FB_INSTALL_BINDIR}")
+if(DEFINED _native_gas_object_link AND _native_gas_object_link)
+    install(PROGRAMS "${_native_fbc}" DESTINATION "${FB_INSTALL_BINDIR}")
+else()
+    install(TARGETS fbc RUNTIME DESTINATION "${FB_INSTALL_BINDIR}")
+endif()
