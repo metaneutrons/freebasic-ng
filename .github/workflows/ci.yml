@@ -47,6 +47,7 @@ jobs:
               mingw-w64-x86_64-ninja
               mingw-w64-x86_64-gcc
               mingw-w64-x86_64-libffi
+              git
               make
               python
           - name: win32-aarch64
@@ -60,6 +61,7 @@ jobs:
               mingw-w64-clang-aarch64-ninja
               mingw-w64-clang-aarch64-gcc
               mingw-w64-clang-aarch64-libffi
+              git
               make
               python
 

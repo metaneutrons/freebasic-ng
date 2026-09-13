@@ -207,23 +207,51 @@ if(FB_BUILD_TESTS OR FB_BUILD_LEGACY_UNIT_TESTS OR
         find_package(Python3 COMPONENTS Interpreter REQUIRED)
         find_program(FB_LEGACY_TEST_MAKE NAMES gmake make REQUIRED)
         set(_fb_legacy_unit_dir "${CMAKE_BINARY_DIR}/tests/legacy-unit")
+        set(_fb_legacy_unit_runner "${CMAKE_SOURCE_DIR}/scripts/run-legacy-unit-tests.py")
+        set(_fb_legacy_unit_cmake "${CMAKE_COMMAND}")
+        set(_fb_legacy_unit_make "${FB_LEGACY_TEST_MAKE}")
+        set(_fb_legacy_unit_build_dir "${CMAKE_BINARY_DIR}")
+        set(_fb_legacy_unit_install_prefix "${_fb_legacy_unit_dir}/stage")
+        set(_fb_legacy_unit_source_tests_dir "${CMAKE_SOURCE_DIR}/tests")
+        set(_fb_legacy_unit_source_include_dir "${CMAKE_SOURCE_DIR}/inc")
+        set(_fb_legacy_unit_work_dir "${_fb_legacy_unit_dir}/work")
+        set(_fb_legacy_unit_log "${_fb_legacy_unit_dir}/unit-tests.log")
+
+        # MSYS Python treats C:/... arguments as POSIX-relative paths. Run
+        # the adapter from the build tree and pass only portable relative
+        # paths to its subprocess calls on Windows.
+        if(WIN32)
+            file(RELATIVE_PATH _fb_legacy_unit_runner "${CMAKE_BINARY_DIR}"
+                "${_fb_legacy_unit_runner}")
+            file(RELATIVE_PATH _fb_legacy_unit_source_tests_dir "${CMAKE_BINARY_DIR}"
+                "${_fb_legacy_unit_source_tests_dir}")
+            file(RELATIVE_PATH _fb_legacy_unit_source_include_dir "${CMAKE_BINARY_DIR}"
+                "${_fb_legacy_unit_source_include_dir}")
+            set(_fb_legacy_unit_cmake cmake)
+            set(_fb_legacy_unit_make make)
+            set(_fb_legacy_unit_build_dir .)
+            set(_fb_legacy_unit_install_prefix tests/legacy-unit/stage)
+            set(_fb_legacy_unit_work_dir tests/legacy-unit/work)
+            set(_fb_legacy_unit_log tests/legacy-unit/unit-tests.log)
+        endif()
         add_test(
             NAME legacy.unit
             COMMAND "${Python3_EXECUTABLE}"
-                "${CMAKE_SOURCE_DIR}/scripts/run-legacy-unit-tests.py"
-                --cmake "${CMAKE_COMMAND}"
-                --make "${FB_LEGACY_TEST_MAKE}"
-                --build-dir "${CMAKE_BINARY_DIR}"
-                --install-prefix "${_fb_legacy_unit_dir}/stage"
-                --source-tests-dir "${CMAKE_SOURCE_DIR}/tests"
-                --source-include-dir "${CMAKE_SOURCE_DIR}/inc"
-                --work-dir "${_fb_legacy_unit_dir}/work"
-                --log "${_fb_legacy_unit_dir}/unit-tests.log"
+                "${_fb_legacy_unit_runner}"
+                --cmake "${_fb_legacy_unit_cmake}"
+                --make "${_fb_legacy_unit_make}"
+                --build-dir "${_fb_legacy_unit_build_dir}"
+                --install-prefix "${_fb_legacy_unit_install_prefix}"
+                --source-tests-dir "${_fb_legacy_unit_source_tests_dir}"
+                --source-include-dir "${_fb_legacy_unit_source_include_dir}"
+                --work-dir "${_fb_legacy_unit_work_dir}"
+                --log "${_fb_legacy_unit_log}"
                 ${_fb_legacy_runtime_test_fbc_args}
         )
         set_tests_properties(legacy.unit PROPERTIES
             LABELS "legacy;unit"
             TIMEOUT 1800
+            WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
         )
     endif()
 
@@ -240,18 +268,42 @@ if(FB_BUILD_TESTS OR FB_BUILD_LEGACY_UNIT_TESTS OR
         find_package(Python3 COMPONENTS Interpreter REQUIRED)
         find_program(FB_LEGACY_TEST_MAKE NAMES gmake make REQUIRED)
         set(_fb_legacy_unit_negative_dir "${CMAKE_BINARY_DIR}/tests/legacy-unit-negative")
+        set(_fb_legacy_unit_negative_runner "${CMAKE_SOURCE_DIR}/scripts/run-legacy-unit-tests.py")
+        set(_fb_legacy_unit_negative_cmake "${CMAKE_COMMAND}")
+        set(_fb_legacy_unit_negative_make "${FB_LEGACY_TEST_MAKE}")
+        set(_fb_legacy_unit_negative_build_dir "${CMAKE_BINARY_DIR}")
+        set(_fb_legacy_unit_negative_install_prefix "${_fb_legacy_unit_negative_dir}/stage")
+        set(_fb_legacy_unit_negative_source_tests_dir "${CMAKE_SOURCE_DIR}/tests")
+        set(_fb_legacy_unit_negative_source_include_dir "${CMAKE_SOURCE_DIR}/inc")
+        set(_fb_legacy_unit_negative_work_dir "${_fb_legacy_unit_negative_dir}/work")
+        set(_fb_legacy_unit_negative_log "${_fb_legacy_unit_negative_dir}/unit-tests.log")
+
+        if(WIN32)
+            file(RELATIVE_PATH _fb_legacy_unit_negative_runner "${CMAKE_BINARY_DIR}"
+                "${_fb_legacy_unit_negative_runner}")
+            file(RELATIVE_PATH _fb_legacy_unit_negative_source_tests_dir "${CMAKE_BINARY_DIR}"
+                "${_fb_legacy_unit_negative_source_tests_dir}")
+            file(RELATIVE_PATH _fb_legacy_unit_negative_source_include_dir "${CMAKE_BINARY_DIR}"
+                "${_fb_legacy_unit_negative_source_include_dir}")
+            set(_fb_legacy_unit_negative_cmake cmake)
+            set(_fb_legacy_unit_negative_make make)
+            set(_fb_legacy_unit_negative_build_dir .)
+            set(_fb_legacy_unit_negative_install_prefix tests/legacy-unit-negative/stage)
+            set(_fb_legacy_unit_negative_work_dir tests/legacy-unit-negative/work)
+            set(_fb_legacy_unit_negative_log tests/legacy-unit-negative/unit-tests.log)
+        endif()
         add_test(
             NAME legacy.unit-negative
             COMMAND "${Python3_EXECUTABLE}"
-                "${CMAKE_SOURCE_DIR}/scripts/run-legacy-unit-tests.py"
-                --cmake "${CMAKE_COMMAND}"
-                --make "${FB_LEGACY_TEST_MAKE}"
-                --build-dir "${CMAKE_BINARY_DIR}"
-                --install-prefix "${_fb_legacy_unit_negative_dir}/stage"
-                --source-tests-dir "${CMAKE_SOURCE_DIR}/tests"
-                --source-include-dir "${CMAKE_SOURCE_DIR}/inc"
-                --work-dir "${_fb_legacy_unit_negative_dir}/work"
-                --log "${_fb_legacy_unit_negative_dir}/unit-tests.log"
+                "${_fb_legacy_unit_negative_runner}"
+                --cmake "${_fb_legacy_unit_negative_cmake}"
+                --make "${_fb_legacy_unit_negative_make}"
+                --build-dir "${_fb_legacy_unit_negative_build_dir}"
+                --install-prefix "${_fb_legacy_unit_negative_install_prefix}"
+                --source-tests-dir "${_fb_legacy_unit_negative_source_tests_dir}"
+                --source-include-dir "${_fb_legacy_unit_negative_source_include_dir}"
+                --work-dir "${_fb_legacy_unit_negative_work_dir}"
+                --log "${_fb_legacy_unit_negative_log}"
                 --inject-failing-fixture
                 --expect-failure
                 ${_fb_legacy_runtime_test_fbc_args}
@@ -259,6 +311,7 @@ if(FB_BUILD_TESTS OR FB_BUILD_LEGACY_UNIT_TESTS OR
         set_tests_properties(legacy.unit-negative PROPERTIES
             LABELS "legacy;unit;negative"
             TIMEOUT 1800
+            WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
         )
     endif()
 
