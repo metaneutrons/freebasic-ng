@@ -335,7 +335,24 @@ jobs:
 
       - name: Self-host x86 compiler and run historical suites
         run: |
-          PATH="$FBC_SEED_DIR/bin:$PATH" cmake -S . -B selfhost-build -G Ninja \
+          # Travis first built a current fbc1 with the 1.05 seed, then used
+          # fbc1—not the historical seed—to rebuild the final compiler.  The
+          # two stages are both CMake builds here; fbc1 preserves the current
+          # compiler's direct-link semantics for the final x86 GAS objects.
+          PATH="$FBC_SEED_DIR/bin:$PATH" cmake -S . -B seed-selfhost-build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release -DFB_USE_SYSTEM_FBC=ON \
+            -DCMAKE_TOOLCHAIN_FILE="$PWD/cmake/toolchains/linux-x86.cmake" \
+            -DFB_NATIVE_COMPILER_OBJECTS=ON -DFB_NATIVE_COMPILER_BACKEND=gcc \
+            -DFB_COMPILER_DEBUG=${{ matrix.compiler_debug }} \
+            -DFB_BUILD_GFXLIB=OFF \
+            -DFB_DISABLE_X11=ON -DFB_DISABLE_GPM=ON \
+            -DFB_DISABLE_FFI=ON -DFB_DISABLE_OPENGL=ON
+          cmake --build seed-selfhost-build
+          cmake --install seed-selfhost-build --prefix "$PWD/seed-selfhost-stage"
+          test "$(seed-selfhost-stage/bin/fbc -print host)" = "linux-x86"
+          file seed-selfhost-stage/bin/fbc | grep -q 'ELF 32-bit'
+
+          PATH="$PWD/seed-selfhost-stage/bin:$PATH" cmake -S . -B selfhost-build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release -DFB_USE_SYSTEM_FBC=ON \
             -DCMAKE_TOOLCHAIN_FILE="$PWD/cmake/toolchains/linux-x86.cmake" \
             -DFB_NATIVE_COMPILER_OBJECTS=ON -DFB_NATIVE_COMPILER_BACKEND=gas \
