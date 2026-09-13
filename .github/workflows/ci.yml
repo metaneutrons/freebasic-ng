@@ -61,6 +61,7 @@ jobs:
               mingw-w64-clang-aarch64-ninja
               mingw-w64-clang-aarch64-gcc
               mingw-w64-clang-aarch64-libffi
+              mingw-w64-clang-aarch64-lldb
               git
               make
               python
@@ -164,6 +165,21 @@ jobs:
           # ignore only that CR-at-EOL conversion rather than every whitespace
           # difference.
           git diff --ignore-cr-at-eol --exit-code
+
+      # CTest preserves the copied legacy-suite work tree after a failure.
+      # Print a native backtrace there, without replacing the original test
+      # result, so an ARM64 runtime regression is actionable from CI output.
+      - name: Diagnose failed native unit suite (Windows)
+        if: failure() && matrix.native_unit_suite && matrix.family == 'windows'
+        shell: msys2 {0}
+        run: |
+          test_executable='selfhost-build/tests/legacy-unit/work/tests/fbc-tests.exe'
+          if [ -f "$test_executable" ]; then
+            lldb -b \
+              -o 'run --brief-summary' \
+              -o 'thread backtrace all' \
+              -- "$test_executable" || true
+          fi
 
   darwin-aarch64-selfhost:
     name: Self-host Darwin ARM64
