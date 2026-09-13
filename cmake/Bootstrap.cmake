@@ -40,18 +40,28 @@ if(NOT FBC_EXECUTABLE)
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
     get_filename_component(_fb_seed_cache "${FB_BOOTSTRAP_SEED_CACHE}" ABSOLUTE
         BASE_DIR "${CMAKE_BINARY_DIR}")
-    file(RELATIVE_PATH _fb_seed_script "${CMAKE_BINARY_DIR}"
-        "${CMAKE_SOURCE_DIR}/scripts/fetch-bootstrap-seed.py")
-    file(RELATIVE_PATH _fb_seed_manifest "${CMAKE_BINARY_DIR}"
-        "${CMAKE_SOURCE_DIR}/bootstrap/seed-provenance.json")
-    file(RELATIVE_PATH _fb_seed_cache_relative "${CMAKE_BINARY_DIR}" "${_fb_seed_cache}")
+    if(WIN32)
+        # MSYS Python expects POSIX paths while native CMake passes C:/ paths.
+        # Relative paths from the build directory are understood by both.
+        file(RELATIVE_PATH _fb_seed_script "${CMAKE_BINARY_DIR}"
+            "${CMAKE_SOURCE_DIR}/scripts/fetch-bootstrap-seed.py")
+        file(RELATIVE_PATH _fb_seed_manifest "${CMAKE_BINARY_DIR}"
+            "${CMAKE_SOURCE_DIR}/bootstrap/seed-provenance.json")
+        file(RELATIVE_PATH _fb_seed_cache_argument "${CMAKE_BINARY_DIR}"
+            "${_fb_seed_cache}")
+    else()
+        # Keep native absolute paths on Unix. macOS commonly resolves /tmp via
+        # /private/tmp, so a relative path computed from the logical path can
+        # point at a different directory.
+        set(_fb_seed_script "${CMAKE_SOURCE_DIR}/scripts/fetch-bootstrap-seed.py")
+        set(_fb_seed_manifest "${CMAKE_SOURCE_DIR}/bootstrap/seed-provenance.json")
+        set(_fb_seed_cache_argument "${_fb_seed_cache}")
+    endif()
     execute_process(
-        # MSYS Python expects POSIX paths while CMake on native Windows passes
-        # C:/ paths. Relative paths from the build directory work for both.
         COMMAND "${Python3_EXECUTABLE}" "${_fb_seed_script}"
             --manifest "${_fb_seed_manifest}"
             --target "${FB_TARGET_ID}"
-            --cache-dir "${_fb_seed_cache_relative}"
+            --cache-dir "${_fb_seed_cache_argument}"
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
         RESULT_VARIABLE _fb_seed_result
         OUTPUT_VARIABLE _fb_seed_output

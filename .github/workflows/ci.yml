@@ -384,7 +384,7 @@ jobs:
       - name: Verify version and bootstrap metadata
         run: |
           python3 scripts/check-version.py
-          python3 scripts/check-bootstrap-provenance.py --target linux-x86_64
+          python3 scripts/fetch-bootstrap-seed.py --target linux-x86_64 --cache-dir build/seed-check
 
       - name: Install build dependencies
         run: |
