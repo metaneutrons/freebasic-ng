@@ -20,37 +20,45 @@ jobs:
             runner: ubuntu-24.04
             family: unix
             expected_host: linux-x86_64
+            native_unit_suite: false
           - name: linux-aarch64
             runner: ubuntu-24.04-arm
             family: unix
             expected_host: linux-aarch64
+            native_unit_suite: true
           - name: darwin-x86_64
             runner: macos-15-intel
             family: unix
             expected_host: darwin-x86_64
+            native_unit_suite: true
           - name: darwin-aarch64
             runner: macos-15
             family: unix
             expected_host: darwin-aarch64
+            native_unit_suite: false
           - name: win64
             runner: windows-2025
             family: windows
             expected_host: win64
+            native_unit_suite: true
             msystem: MINGW64
             packages: >-
               mingw-w64-x86_64-cmake
               mingw-w64-x86_64-ninja
               mingw-w64-x86_64-gcc
+              make
               python
           - name: win32-aarch64
             runner: windows-11-arm
             family: windows
             expected_host: win32-aarch64
+            native_unit_suite: true
             msystem: CLANGARM64
             packages: >-
               mingw-w64-clang-aarch64-cmake
               mingw-w64-clang-aarch64-ninja
               mingw-w64-clang-aarch64-gcc
+              make
               python
 
     name: Build ${{ matrix.name }}
@@ -115,6 +123,36 @@ jobs:
         run: |
           cmake --install build --prefix stage
           python scripts/verify-installed-fbc.py --prefix stage --expected-host "${{ matrix.expected_host }}"
+
+      # The former Travis matrix is Linux-specific.  M7 additionally requires
+      # the complete historical unit suite through a native self-host on every
+      # supported host; Darwin ARM and Linux x64 have dedicated jobs below.
+      - name: Self-host and run native unit suite (Unix)
+        if: matrix.native_unit_suite && matrix.family == 'unix'
+        run: |
+          PATH="$PWD/stage/bin:$PATH" cmake -S . -B selfhost-build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release -DFB_USE_SYSTEM_FBC=ON \
+            -DFB_BUILD_LEGACY_UNIT_TESTS=ON -DFB_BUILD_GFXLIB=ON \
+            -DFB_DISABLE_X11=ON -DFB_DISABLE_GPM=ON \
+            -DFB_DISABLE_FFI=ON -DFB_DISABLE_OPENGL=ON
+          cmake --build selfhost-build
+          test "$(selfhost-build/src/compiler/fbc -print host)" = "${{ matrix.expected_host }}"
+          ctest --test-dir selfhost-build --output-on-failure
+          git diff --exit-code
+
+      - name: Self-host and run native unit suite (Windows)
+        if: matrix.native_unit_suite && matrix.family == 'windows'
+        shell: msys2 {0}
+        run: |
+          PATH="$PWD/stage/bin:$PATH" cmake -S . -B selfhost-build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release -DFB_USE_SYSTEM_FBC=ON \
+            -DFB_BUILD_LEGACY_UNIT_TESTS=ON -DFB_BUILD_GFXLIB=ON \
+            -DFB_DISABLE_X11=ON -DFB_DISABLE_GPM=ON \
+            -DFB_DISABLE_FFI=ON -DFB_DISABLE_OPENGL=ON
+          cmake --build selfhost-build
+          test "$(selfhost-build/src/compiler/fbc.exe -print host)" = "${{ matrix.expected_host }}"
+          ctest --test-dir selfhost-build --output-on-failure
+          git diff --exit-code
 
   darwin-aarch64-selfhost:
     name: Self-host Darwin ARM64
