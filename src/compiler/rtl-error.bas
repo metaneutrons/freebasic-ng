@@ -234,8 +234,12 @@ end sub
 '' clang rejects an indirect goto in a function that takes no label address
 '' ("indirect goto in function with no address-of-label expressions").  Without
 '' these labels every procedure containing an error check is such a function,
-'' so `fbc -e` could not be compiled at all where clang is the C compiler.
-'' Darwin is covered by target, since its C compiler is always clang.
+'' so `fbc -e` cannot be compiled at all wherever clang translates the emitted
+'' C -- which the compiler cannot tell from the target: Darwin's cc is clang,
+'' the win32 aarch64 toolchain ships clang as its gcc, and any host can have a
+'' clang behind the name.  The C backend therefore always emits them, which is
+'' the shape -ex produces anyway.  The assembly backends emit the jump
+'' themselves and are left alone.
 private function hEmitResumeLabels( ) as integer
 	if( env.clopt.resumeerr ) then
 		function = TRUE
@@ -243,10 +247,8 @@ private function hEmitResumeLabels( ) as integer
 	end if
 
 	select case as const( env.clopt.backend )
-	case FB_BACKEND_CLANG
+	case FB_BACKEND_GCC, FB_BACKEND_CLANG
 		function = TRUE
-	case FB_BACKEND_GCC
-		function = (env.clopt.target = FB_COMPTARGET_DARWIN)
 	case else
 		function = FALSE
 	end select
