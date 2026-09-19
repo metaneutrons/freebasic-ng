@@ -180,6 +180,23 @@ if(FB_BUILD_TESTS OR FB_BUILD_LEGACY_UNIT_TESTS OR
         )
     endif()
 
+    # Loading a shared library built by this compiler.  Kept to unix hosts:
+    # the Windows import-library path is a separate story.
+    if(FB_BUILD_COMPILER AND UNIX)
+        find_package(Python3 COMPONENTS Interpreter REQUIRED)
+        add_test(
+            NAME compiler.dylib-load
+            COMMAND "${Python3_EXECUTABLE}"
+                "${CMAKE_SOURCE_DIR}/scripts/run-compiler-regression.py"
+                --cmake "${CMAKE_COMMAND}"
+                --build-dir "${CMAKE_BINARY_DIR}"
+                --install-prefix "${CMAKE_BINARY_DIR}/tests/dylib-load/stage"
+                --source "${CMAKE_SOURCE_DIR}/test/cmake/dylib-load.bas"
+                --library-source "${CMAKE_SOURCE_DIR}/test/cmake/dylib-testlib.bas"
+                --work-dir "${CMAKE_BINARY_DIR}/tests/dylib-load/work"
+        )
+    endif()
+
     # Darwin arm64 uses a pointer __builtin_va_list.  This regression must be
     # built by the native/self-hosted compiler so it validates the generated
     # C path as well as the target ABI model.
