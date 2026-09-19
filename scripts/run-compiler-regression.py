@@ -9,6 +9,21 @@ import subprocess
 from pathlib import Path
 
 
+def locate(tool: Path) -> Path:
+    """Accept a path or a bare name looked up on PATH.
+
+    The Windows test registration passes plain names, because MSYS Python
+    reads a C:/... argument as a relative POSIX path.
+    """
+
+    if tool.is_file():
+        return tool.resolve()
+    located = shutil.which(str(tool))
+    if located is None:
+        return tool
+    return Path(located)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--cmake", type=Path, required=True)
@@ -29,7 +44,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    cmake = args.cmake.resolve()
+    cmake = locate(args.cmake)
     build_dir = args.build_dir.resolve()
     install_prefix = args.install_prefix.resolve()
     source = args.source.resolve()
