@@ -334,9 +334,11 @@
 #define FB_RTL_WIDTHDEV                 "fb_WidthDev"
 #define FB_RTL_WIDTHFILE                "fb_WidthFile"
 
-#define FB_RTL_ERRORTHROW               "fb_ErrorThrowAt"
-#define FB_RTL_ERRORTHROWEX             "fb_ErrorThrowEx"
+#define FB_RTL_ERRORTHROW               "fb_ErrorThrowAtCtx"
+#define FB_RTL_ERRORTHROWEX             "fb_ErrorThrowExCtx"
 #define FB_RTL_ERRORSETHANDLER          "fb_ErrorSetHandler"
+#define FB_RTL_ERRORHANDLERPUSH          "fb_ErrorHandlerPush"
+#define FB_RTL_ERRORHANDLEREXIT          "fb_ErrorHandlerExit"
 #define FB_RTL_ERRORGETNUM              "fb_ErrorGetNum"
 #define FB_RTL_ERRORSETNUM              "fb_ErrorSetNum"
 #define FB_RTL_ERRORRESUME              "fb_ErrorResume"
@@ -764,6 +766,8 @@ enum FB_RTL_IDX
 	FB_RTL_IDX_ERRORTHROW
 	FB_RTL_IDX_ERRORTHROWEX
 	FB_RTL_IDX_ERRORSETHANDLER
+	FB_RTL_IDX_ERRORHANDLERPUSH
+	FB_RTL_IDX_ERRORHANDLEREXIT
 	FB_RTL_IDX_ERRORGETNUM
 	FB_RTL_IDX_ERRORSETNUM
 	FB_RTL_IDX_ERRORRESUME
@@ -1537,6 +1541,11 @@ declare sub rtlErrorSetHandler _
 	( _
 		byval newhandler as ASTNODE ptr, _
 		byval savecurrent as integer _
+	)
+
+declare sub rtlErrorHandlerExit _
+	( _
+		byval ctx as ASTNODE ptr _
 	)
 
 declare function rtlErrorGetNum _

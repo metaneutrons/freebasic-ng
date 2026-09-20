@@ -158,7 +158,7 @@ if(FB_BUILD_TESTS OR FB_BUILD_LEGACY_UNIT_TESTS OR
     # POSIX path, so on Windows the adapter is driven from the build tree with
     # relative paths only, the same way the legacy suites below do it.
     function(fb_add_compiler_regression name)
-        cmake_parse_arguments(_fbreg "" "SOURCE;LIBRARY_SOURCE" "FBC_FLAGS" ${ARGN})
+        cmake_parse_arguments(_fbreg "" "SOURCE;LIBRARY_SOURCE;EXPECTED_EXIT_CODE" "FBC_FLAGS" ${ARGN})
 
         find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
@@ -195,6 +195,11 @@ if(FB_BUILD_TESTS OR FB_BUILD_LEGACY_UNIT_TESTS OR
             list(APPEND _flag_arguments "--fbc-flag=${_flag}")
         endforeach()
 
+        set(_expected_exit_code 0)
+        if(_fbreg_EXPECTED_EXIT_CODE)
+            set(_expected_exit_code "${_fbreg_EXPECTED_EXIT_CODE}")
+        endif()
+
         add_test(
             NAME "compiler.${name}"
             COMMAND "${Python3_EXECUTABLE}"
@@ -204,6 +209,7 @@ if(FB_BUILD_TESTS OR FB_BUILD_LEGACY_UNIT_TESTS OR
                 --install-prefix "${_install_prefix}"
                 --source "${_source}"
                 --work-dir "${_work_dir}"
+                --expected-exit-code "${_expected_exit_code}"
                 ${_library_argument}
                 ${_flag_arguments}
         )
@@ -219,6 +225,25 @@ if(FB_BUILD_TESTS OR FB_BUILD_LEGACY_UNIT_TESTS OR
         fb_add_compiler_regression(error-check-handler
             SOURCE test/cmake/error-check-handler.bas
             FBC_FLAGS -e)
+        fb_add_compiler_regression(error-handler-frame
+            SOURCE test/cmake/error-handler-frame.bas
+            FBC_FLAGS -e)
+        fb_add_compiler_regression(error-handler-frame-o2
+            SOURCE test/cmake/error-handler-frame.bas
+            FBC_FLAGS -e -O 2)
+        fb_add_compiler_regression(error-handler-mutated-local
+            SOURCE test/cmake/error-handler-mutated-local.bas
+            FBC_FLAGS -e -O 2)
+        fb_add_compiler_regression(error-handler-resume
+            SOURCE test/cmake/error-handler-resume.bas
+            FBC_FLAGS -e -lang deprecated)
+        fb_add_compiler_regression(error-handler-cross-resume
+            SOURCE test/cmake/error-handler-cross-resume.bas
+            FBC_FLAGS -e -lang deprecated
+            EXPECTED_EXIT_CODE 5)
+        fb_add_compiler_regression(error-handler-local-restore
+            SOURCE test/cmake/error-handler-local-restore.bas
+            FBC_FLAGS -e -lang deprecated)
     endif()
 
     # Loading a shared library built by this compiler.  Kept to unix hosts:

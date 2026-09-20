@@ -1,6 +1,15 @@
 /* runtime error handling */
 
 #include "fb.h"
+#include <setjmp.h>
+
+struct _FB_ERRORHANDLERCTX {
+	jmp_buf buf;
+	void **owner;
+	FB_ERRHANDLER handler;
+	FB_ERRHANDLER previous_handler;
+	FB_ERRORHANDLERCTX *previous;
+};
 
 static const char *messages[] = {
 	"",                                     /* FB_RTERROR_OK */
@@ -75,14 +84,15 @@ static void fb_Die
 	fb_End( err_num );
 }
 
-FB_ERRHANDLER fb_ErrorThrowMsg
+FB_ERRHANDLER fb_ErrorThrowMsgCtx
 	(
 		int err_num,
 		int line_num,
 		const char *mod_name,
 		const char *msg,
 		void *res_label,
-		void *resnext_label
+		void *resnext_label,
+		void **source_ctx
 	)
 {
 	FB_ERRORCTX *ctx = FB_TLSGETCTX( ERROR );
@@ -96,6 +106,19 @@ FB_ERRHANDLER fb_ErrorThrowMsg
 		ctx->res_lbl = res_label;
 		ctx->resnxt_lbl = resnext_label;
 
+		if( ctx->handler_ctx != NULL ) {
+			/* A longjmp discards the frames between the error and the
+			   handler. RESUME can only target labels in the handler's own
+			   procedure; any other label would be an invalid cross-function
+			   jump after the unwind. */
+			if( source_ctx != ctx->handler_ctx->owner ) {
+				ctx->res_lbl = NULL;
+				ctx->resnxt_lbl = NULL;
+			}
+
+			longjmp( ctx->handler_ctx->buf, 1 );
+		}
+
 		return ctx->handler;
 	}
 
@@ -108,6 +131,50 @@ FB_ERRHANDLER fb_ErrorThrowMsg
 	return NULL;
 }
 
+FB_ERRHANDLER fb_ErrorThrowExCtx
+	(
+		int err_num,
+		int line_num,
+		const char *mod_name,
+		void *res_label,
+		void *resnext_label,
+		void **source_ctx
+	)
+{
+	return fb_ErrorThrowMsgCtx( err_num, line_num, mod_name, NULL, res_label, resnext_label, source_ctx );
+}
+
+FB_ERRHANDLER fb_ErrorThrowAtCtx
+	(
+		int line_num,
+		const char *mod_name,
+		void *res_label,
+		void *resnext_label,
+		void **source_ctx
+	)
+{
+	FB_ERRORCTX *ctx = FB_TLSGETCTX( ERROR );
+
+	return fb_ErrorThrowExCtx( ctx->err_num, line_num, mod_name, res_label, resnext_label, source_ctx );
+
+}
+
+/* Keep the original runtime ABI for programs and runtime code that do not
+   participate in the compiler's per-procedure error context protocol. */
+FB_ERRHANDLER fb_ErrorThrowMsg
+	(
+		int err_num,
+		int line_num,
+		const char *mod_name,
+		const char *msg,
+		void *res_label,
+		void *resnext_label
+	)
+{
+	return fb_ErrorThrowMsgCtx( err_num, line_num, mod_name, msg,
+	                            res_label, resnext_label, NULL );
+}
+
 FB_ERRHANDLER fb_ErrorThrowEx
 	(
 		int err_num,
@@ -117,7 +184,8 @@ FB_ERRHANDLER fb_ErrorThrowEx
 		void *resnext_label
 	)
 {
-	return fb_ErrorThrowMsg( err_num, line_num, mod_name, NULL, res_label, resnext_label );
+	return fb_ErrorThrowExCtx( err_num, line_num, mod_name,
+	                           res_label, resnext_label, NULL );
 }
 
 FB_ERRHANDLER fb_ErrorThrowAt
@@ -128,10 +196,8 @@ FB_ERRHANDLER fb_ErrorThrowAt
 		void *resnext_label
 	)
 {
-	FB_ERRORCTX *ctx = FB_TLSGETCTX( ERROR );
-
-	return fb_ErrorThrowEx( ctx->err_num, line_num, mod_name, res_label, resnext_label );
-
+	return fb_ErrorThrowAtCtx( line_num, mod_name,
+	                           res_label, resnext_label, NULL );
 }
 
 FBCALL FB_ERRHANDLER fb_ErrorSetHandler( FB_ERRHANDLER newhandler )
@@ -144,6 +210,53 @@ FBCALL FB_ERRHANDLER fb_ErrorSetHandler( FB_ERRHANDLER newhandler )
 	ctx->handler = newhandler;
 
 	return oldhandler;
+}
+
+FBCALL void *fb_ErrorHandlerPush( void **owner, FB_ERRHANDLER newhandler )
+{
+	FB_ERRORCTX *ctx = FB_TLSGETCTX( ERROR );
+	FB_ERRORHANDLERCTX *handler_ctx;
+
+	/* Each compiled procedure owns an implicit pointer.  Its address is stable
+	   for one activation, including recursive calls, while the context behind
+	   it keeps the platform-specific jmp_buf out of the compiler ABI. */
+	handler_ctx = (FB_ERRORHANDLERCTX *)*owner;
+	if( handler_ctx == NULL ) {
+		handler_ctx = calloc( 1, sizeof( FB_ERRORHANDLERCTX ) );
+		if( handler_ctx == NULL ) {
+			fb_Die( FB_RTERROR_OUTOFMEM, -1, ctx->mod_name, ctx->fun_name, NULL );
+			return NULL;
+		}
+
+		handler_ctx->owner = owner;
+		handler_ctx->previous = ctx->handler_ctx;
+		handler_ctx->previous_handler = ctx->handler;
+		ctx->handler_ctx = handler_ctx;
+		*owner = handler_ctx;
+	}
+
+	handler_ctx->handler = newhandler;
+	ctx->handler = newhandler;
+
+	return &handler_ctx->buf;
+}
+
+FBCALL void fb_ErrorHandlerExit( void **owner )
+{
+	FB_ERRORCTX *ctx = FB_TLSGETCTX( ERROR );
+	FB_ERRORHANDLERCTX *handler_ctx = (FB_ERRORHANDLERCTX *)*owner;
+
+	if( handler_ctx == NULL ) {
+		return;
+	}
+
+	if( ctx->handler_ctx == handler_ctx ) {
+		ctx->handler_ctx = handler_ctx->previous;
+		ctx->handler = handler_ctx->previous_handler;
+	}
+
+	free( handler_ctx );
+	*owner = NULL;
 }
 
 void *fb_ErrorResume( void )

@@ -595,7 +595,7 @@ type FB_PROCDBG
 end type
 
 type FB_PROCERR
-	lasthnd         as FBSYMBOL_ ptr            '' last error handler
+	ctx             as FBSYMBOL_ ptr            '' error handler jump context
 	lastmod         as FBSYMBOL_ ptr            '' last module name
 	lastfun         as FBSYMBOL_ ptr            '' last function name
 end type

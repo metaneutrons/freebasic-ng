@@ -117,21 +117,22 @@
 '':::::
 sub rtlGosubModInit( )
 
+	'' Nonlocal ON ERROR transfers use the same target-specific setjmp entry
+	'' point as the setjmp GOSUB implementation, even in dialects that do not
+	'' permit GOSUB itself.
+	if( env.clopt.target = FB_COMPTARGET_WIN32 ) then
+		if( fbIs64bit() ) then
+			rtlAddIntrinsicProcs( @funcdata1_win64(0) )
+		else
+			rtlAddIntrinsicProcs( @funcdata1_win32(0) )
+		end if
+	else
+		rtlAddIntrinsicProcs( @funcdata2(0) )
+	end if
+
 	'' No need to add these procs if GOSUB isn't allowed in the dialect...
 	if( fbLangOptIsSet( FB_LANG_OPT_GOSUB ) ) then
-
 		rtlAddIntrinsicProcs( @funcdata(0) )
-
-		if( env.clopt.target = FB_COMPTARGET_WIN32 ) then
-			if( fbIs64bit() ) then
-				rtlAddIntrinsicProcs( @funcdata1_win64(0) )
-			else
-				rtlAddIntrinsicProcs( @funcdata1_win32(0) )
-			end if
-		else
-			rtlAddIntrinsicProcs( @funcdata2(0) )
-		end if
-
 	end if
 
 end sub
