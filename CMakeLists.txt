@@ -236,14 +236,14 @@ if(FB_BUILD_TESTS OR FB_BUILD_LEGACY_UNIT_TESTS OR
             FBC_FLAGS -e -O 2)
         fb_add_compiler_regression(error-handler-resume
             SOURCE test/cmake/error-handler-resume.bas
-            FBC_FLAGS -e -lang deprecated)
+            FBC_FLAGS -ex -lang deprecated)
         fb_add_compiler_regression(error-handler-cross-resume
             SOURCE test/cmake/error-handler-cross-resume.bas
-            FBC_FLAGS -e -lang deprecated
+            FBC_FLAGS -ex -lang deprecated
             EXPECTED_EXIT_CODE 5)
         fb_add_compiler_regression(error-handler-local-restore
             SOURCE test/cmake/error-handler-local-restore.bas
-            FBC_FLAGS -e -lang deprecated)
+            FBC_FLAGS -ex -lang deprecated)
     endif()
 
     # Loading a shared library built by this compiler.  Kept to unix hosts:
