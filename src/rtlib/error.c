@@ -3,6 +3,15 @@
 #include "fb.h"
 #include <setjmp.h>
 
+/* The compiler emits __mingw_setjmp() for Windows ARM64.  When Clang enables
+   SEH, MinGW's longjmp() macro instead selects the _setjmpex() family, whose
+   buffers are incompatible with __mingw_setjmp().  Keep this pair together. */
+#if defined(__MINGW32__) && defined(__aarch64__)
+#define fb_ErrorLongJmp __mingw_longjmp
+#else
+#define fb_ErrorLongJmp longjmp
+#endif
+
 struct _FB_ERRORHANDLERCTX {
 	jmp_buf buf;
 	void **owner;
@@ -116,7 +125,7 @@ FB_ERRHANDLER fb_ErrorThrowMsgCtx
 				ctx->resnxt_lbl = NULL;
 			}
 
-			longjmp( ctx->handler_ctx->buf, 1 );
+			fb_ErrorLongJmp( ctx->handler_ctx->buf, 1 );
 		}
 
 		return ctx->handler;
