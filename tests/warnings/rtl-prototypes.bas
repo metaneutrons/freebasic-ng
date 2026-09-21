@@ -305,22 +305,34 @@
 
 #print "---- rtlError"
 
-	ID( function fb_ErrorThrowAt )
+	ID( function fb_ErrorThrowAtCtx )
 	scope
-		dim chk as function cdecl ( byval as const long, byval as const zstring ptr, byval as const any ptr, byval as const any ptr ) as any ptr
-		chk = procptr( fb_ErrorThrowAt )
+		dim chk as function cdecl ( byval as const long, byval as const zstring ptr, byval as const any ptr, byval as const any ptr, byval as any ptr ptr ) as any ptr
+		chk = procptr( fb_ErrorThrowAtCtx )
 	end scope
 
-	ID( function fb_ErrorThrowEx )
+	ID( function fb_ErrorThrowExCtx )
 	scope
-		dim chk as function cdecl ( byval as const long, byval as const long, byval as const zstring ptr, byval as const any ptr, byval as const any ptr ) as any ptr
-		chk = procptr( fb_ErrorThrowEx )
+		dim chk as function cdecl ( byval as const long, byval as const long, byval as const zstring ptr, byval as const any ptr, byval as const any ptr, byval as any ptr ptr ) as any ptr
+		chk = procptr( fb_ErrorThrowExCtx )
 	end scope
 
 	ID( function fb_ErrorSetHandler )
 	scope
 		dim chk as function fbcall ( byval as any ptr ) as any ptr
 		chk = procptr( fb_ErrorSetHandler )
+	end scope
+
+	ID( function fb_ErrorHandlerPush )
+	scope
+		dim chk as function fbcall ( byval as any ptr ptr, byval as any ptr ) as any ptr
+		chk = procptr( fb_ErrorHandlerPush )
+	end scope
+
+	ID( sub fb_ErrorHandlerExit )
+	scope
+		dim chk as sub fbcall ( byval as any ptr ptr )
+		chk = procptr( fb_ErrorHandlerExit )
 	end scope
 
 	ID( function fb_ErrorGetNum )
@@ -3454,4 +3466,3 @@
 		dim chk as function fbcall ( byref as any, byref as any ) as long
 		chk = procptr( fb_IsTypeOf )
 	end scope
-
