@@ -186,6 +186,7 @@ enum
 	BUILTIN_D2L           = (1 shl 4)
 	BUILTIN_D2UL          = (1 shl 5)
 	BUILTIN_STATICASSERT  = (1 shl 6)
+	BUILTIN_ONERROR_OPTNONE = (1 shl 7)
 end enum
 
 type IRHLCCTX
@@ -456,6 +457,41 @@ private sub hAppendCtorAttrib _
 	end if
 end sub
 
+'' C defines automatic variables changed after setjmp() as indeterminate
+'' following longjmp().  An ON ERROR handler needs their FreeBASIC values,
+'' therefore prevent the C compiler from promoting those locals into registers.
+private sub hAppendOnErrorAttrib _
+	( _
+		byref ln as string, _
+		byval proc as FBSYMBOL ptr _
+	)
+
+	dim as integer section = any
+
+	if( proc->proc.ext = NULL ) then
+		exit sub
+	end if
+	if( proc->proc.ext->err.ctx = NULL ) then
+		exit sub
+	end if
+
+	if( (ctx.usedbuiltins and BUILTIN_ONERROR_OPTNONE) = 0 ) then
+		ctx.usedbuiltins or= BUILTIN_ONERROR_OPTNONE
+
+		section = sectionGosub( 0 )
+		hWriteLine( "#if defined(__clang__)", TRUE )
+		hWriteLine( "#define __FB_ONERROR_OPTNONE __attribute__((optnone))", TRUE )
+		hWriteLine( "#elif defined(__GNUC__)", TRUE )
+		hWriteLine( "#define __FB_ONERROR_OPTNONE __attribute__((optimize(""O0""), noinline, noclone))", TRUE )
+		hWriteLine( "#else", TRUE )
+		hWriteLine( "#define __FB_ONERROR_OPTNONE", TRUE )
+		hWriteLine( "#endif", TRUE )
+		sectionReturn( section )
+	end if
+
+	ln += "__FB_ONERROR_OPTNONE "
+end sub
+
 '' Helper function to add underscore prefix or @N stdcall suffix to mangled
 '' procedure names (because symb-mangling doesn't do it for -gen gcc), for use
 '' in inline ASM and such.
@@ -546,6 +582,9 @@ private function hEmitProcHeader _
 	if( options = 0 ) then
 		'' ctor/dtor flags on bodies
 		hAppendCtorAttrib( ln, proc, TRUE )
+	end if
+	if( (options and EMITPROC_ISPROCPTR) = 0 ) then
+		hAppendOnErrorAttrib( ln, proc )
 	end if
 
 	if( (options and EMITPROC_ISPROCPTR) = 0 ) then

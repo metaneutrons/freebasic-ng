@@ -21,12 +21,13 @@
 			@FB_RTL_ERRORTHROW, NULL, _
 			typeAddrOf( FB_DATATYPE_VOID ), FB_FUNCMODE_CDECL, _
 			NULL, FB_RTL_OPT_NONE, _
-			4, _
+			5, _
 			{ _
 				( typeSetIsConst( FB_DATATYPE_LONG ), FB_PARAMMODE_BYVAL, FALSE ), _
 				( typeAddrOf( typeSetIsConst( FB_DATATYPE_CHAR ) ), FB_PARAMMODE_BYVAL, FALSE ), _
 				( typeAddrOf( typeSetIsConst( FB_DATATYPE_VOID ) ), FB_PARAMMODE_BYVAL, FALSE ), _
-				( typeAddrOf( typeSetIsConst( FB_DATATYPE_VOID ) ), FB_PARAMMODE_BYVAL, FALSE ) _
+				( typeAddrOf( typeSetIsConst( FB_DATATYPE_VOID ) ), FB_PARAMMODE_BYVAL, FALSE ), _
+				( typeMultAddrOf( FB_DATATYPE_VOID, 2 ), FB_PARAMMODE_BYVAL, FALSE ) _
 			} _
 		), _
 		/' function fb_ErrorThrowEx cdecl _
@@ -41,13 +42,14 @@
 			@FB_RTL_ERRORTHROWEX, NULL, _
 			typeAddrOf( FB_DATATYPE_VOID ), FB_FUNCMODE_CDECL, _
 			NULL, FB_RTL_OPT_NONE, _
-			5, _
+			6, _
 			{ _
 				( typeSetIsConst( FB_DATATYPE_LONG ), FB_PARAMMODE_BYVAL, FALSE ), _
 				( typeSetIsConst( FB_DATATYPE_LONG ), FB_PARAMMODE_BYVAL, FALSE ), _
 				( typeAddrOf( typeSetIsConst( FB_DATATYPE_CHAR ) ), FB_PARAMMODE_BYVAL, FALSE ), _
 				( typeAddrOf( typeSetIsConst( FB_DATATYPE_VOID ) ), FB_PARAMMODE_BYVAL, FALSE ), _
-				( typeAddrOf( typeSetIsConst( FB_DATATYPE_VOID ) ), FB_PARAMMODE_BYVAL, FALSE ) _
+				( typeAddrOf( typeSetIsConst( FB_DATATYPE_VOID ) ), FB_PARAMMODE_BYVAL, FALSE ), _
+				( typeMultAddrOf( FB_DATATYPE_VOID, 2 ), FB_PARAMMODE_BYVAL, FALSE ) _
 			} _
 		), _
 		/' function fb_ErrorSetHandler( byval newhandler as FB_ERRHANDLER ) as FB_ERRHANDLER '/ _
@@ -58,6 +60,27 @@
 			1, _
 			{ _
 				( typeAddrOf( FB_DATATYPE_VOID ), FB_PARAMMODE_BYVAL, FALSE ) _
+			} _
+		), _
+		/' function fb_ErrorHandlerPush( byval ctx as any ptr ptr, byval newhandler as FB_ERRHANDLER ) as any ptr '/ _
+		( _
+			@FB_RTL_ERRORHANDLERPUSH, NULL, _
+			typeAddrOf( FB_DATATYPE_VOID ), FB_FUNCMODE_FBCALL, _
+			NULL, FB_RTL_OPT_NONE, _
+			2, _
+			{ _
+				( typeMultAddrOf( FB_DATATYPE_VOID, 2 ), FB_PARAMMODE_BYVAL, FALSE ), _
+				( typeAddrOf( FB_DATATYPE_VOID ), FB_PARAMMODE_BYVAL, FALSE ) _
+			} _
+		), _
+		/' sub fb_ErrorHandlerExit( byval ctx as any ptr ptr ) '/ _
+		( _
+			@FB_RTL_ERRORHANDLEREXIT, NULL, _
+			FB_DATATYPE_VOID, FB_FUNCMODE_FBCALL, _
+			NULL, FB_RTL_OPT_NONE, _
+			1, _
+			{ _
+				( typeMultAddrOf( FB_DATATYPE_VOID, 2 ), FB_PARAMMODE_BYVAL, FALSE ) _
 			} _
 		), _
 		/' function fb_ErrorGetNum( ) as long '/ _
@@ -254,6 +277,49 @@ private function hEmitResumeLabels( ) as integer
 	end select
 end function
 
+'' A context lives in an implicit local pointer.  The runtime allocates the
+'' jmp_buf behind that pointer, while its address identifies this procedure's
+'' activation when deciding whether RESUME remains valid after a longjmp.
+private sub hErrorHandlerAddInit( byval proc as FBSYMBOL ptr )
+	with proc->proc.ext->err
+		if( .ctx <> NULL ) then
+			exit sub
+		end if
+
+		.ctx = symbAddImplicitVar( typeAddrOf( FB_DATATYPE_VOID ), NULL, FB_SYMBOPT_UNSCOPE )
+		astAddUnscoped( astNewDECL( .ctx, TRUE ) )
+		symbSetIsDeclared( .ctx )
+	end with
+end sub
+
+private function hErrorHandlerContext( ) as ASTNODE ptr
+	dim as FBSYMBOL ptr ctx = parser.currproc->proc.ext->err.ctx
+
+	if( ctx <> NULL ) then
+		function = astNewADDROF( astNewVAR( ctx ) )
+	else
+		function = astNewCONSTi( NULL, FB_DATATYPE_UINT )
+	end if
+end function
+
+private function rtlErrorHandlerPush _
+	( _
+		byval ctx as ASTNODE ptr, _
+		byval newhandler as ASTNODE ptr _
+	) as ASTNODE ptr
+
+	dim as ASTNODE ptr proc = astNewCALL( PROCLOOKUP( ERRORHANDLERPUSH ) )
+
+	if( astNewARG( proc, ctx ) = NULL ) then
+		return NULL
+	end if
+	if( astNewARG( proc, newhandler ) = NULL ) then
+		return NULL
+	end if
+
+	function = proc
+end function
+
 private function hErrorThrow _
 	( _
 		byval reslabel as FBSYMBOL ptr, _
@@ -262,7 +328,7 @@ private function hErrorThrow _
 
 	dim as ASTNODE ptr proc = any, param = any
 
-	'' fb_ErrorThrow( linenum, module, reslabel, resnxtlabel )
+	'' fb_ErrorThrow( linenum, module, reslabel, resnxtlabel, sourcectx )
 	proc = astNewCALL( PROCLOOKUP( ERRORTHROW ) )
 
 	'' linenum
@@ -287,9 +353,13 @@ private function hErrorThrow _
 	end if
 	astNewARG( proc, param )
 
+	'' The runtime invalidates RESUME when this error unwinds into a handler
+	'' installed by a different procedure.
+	astNewARG( proc, hErrorHandlerContext( ) )
+
 	'' All the astNewARG()'s should succeed, they're hard-coded, not
 	'' supplied by the input code
-	assert( proc->call.args = 4 )
+	assert( proc->call.args = 5 )
 
 	function = proc
 end function
@@ -349,7 +419,7 @@ sub rtlErrorThrow _
 
 	nxtlabel = symbAddLabel( NULL )
 
-	'' fb_ErrorThrowEx( errnum, linenum, module, reslabel, resnxtlabel );
+	'' fb_ErrorThrowEx( errnum, linenum, module, reslabel, resnxtlabel, sourcectx );
 
 	'' errnum
 	if( astNewARG( proc, errexpr ) = NULL ) then
@@ -386,6 +456,11 @@ sub rtlErrorThrow _
 		exit sub
 	end if
 
+	'' sourcectx
+	if( astNewARG( proc, hErrorHandlerContext( ) ) = NULL ) then
+		exit sub
+	end if
+
 	'' dst
 	astAdd( astNewBRANCH( AST_OP_JUMPPTR, NULL, proc ) )
 
@@ -399,34 +474,39 @@ sub rtlErrorSetHandler _
 		byval savecurrent as integer _
 	)
 
-	dim as ASTNODE ptr proc = any, expr = any
+	dim as FBSYMBOL ptr handler_label = any, continue_label = any
+	dim as ASTNODE ptr ctx = any, jumpbuf = any
 
-	''
-	proc = astNewCALL( PROCLOOKUP( ERRORSETHANDLER ) )
+	'' savecurrent was needed by the old global-handler implementation.  The
+	'' context is now per procedure activation, so every ON ERROR statement
+	'' uses the same local context and the runtime restores its predecessor at
+	'' procedure exit.
+	hErrorHandlerAddInit( parser.currproc )
+	ctx = hErrorHandlerContext( )
+	jumpbuf = rtlErrorHandlerPush( ctx, astCloneTree( newhandler ) )
 
-	'' byval newhandler as uint
-	if( astNewARG( proc, newhandler ) = NULL ) then
-		exit sub
-	end if
+	'' setjmp() returns 0 during handler installation, so it skips the handler
+	'' jump. A runtime error in a nested procedure returns here nonzero and
+	'' reaches the target label with this procedure's frame restored.
+	handler_label = symbAddLabel( NULL )
+	continue_label = symbAddLabel( NULL )
+	astAdd( astBuildBranch( _
+		astNewBOP( AST_OP_EQ, rtlSetJmp( jumpbuf ), astNewCONSTi( 0 ) ), _
+		handler_label, _
+		FALSE ) )
+	astAdd( astNewBRANCH( AST_OP_JMP, continue_label ) )
+	astAdd( astNewLABEL( handler_label ) )
+	astAdd( astNewBRANCH( AST_OP_JUMPPTR, NULL, newhandler ) )
+	astAdd( astNewLABEL( continue_label ) )
 
-	''
-	expr = NULL
-	if( savecurrent ) then
-		if( fbIsModLevel( ) = FALSE ) then
-			with parser.currproc->proc.ext->err
-				if( .lasthnd = NULL ) then
-					.lasthnd = symbAddTempVar( typeAddrOf( FB_DATATYPE_VOID ) )
-					expr = astNewVAR( .lasthnd )
-					astAdd( astNewASSIGN( expr, proc ) )
-				end if
-			end with
-		end if
-	end if
+end sub
 
-	if( expr = NULL ) then
+sub rtlErrorHandlerExit( byval ctx as ASTNODE ptr )
+	dim as ASTNODE ptr proc = astNewCALL( PROCLOOKUP( ERRORHANDLEREXIT ) )
+
+	if( astNewARG( proc, ctx ) <> NULL ) then
 		astAdd( proc )
 	end if
-
 end sub
 
 '':::::

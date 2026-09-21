@@ -37,6 +37,12 @@ def main() -> None:
     )
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument(
+        "--expected-exit-code",
+        type=int,
+        default=0,
+        help="exit status expected from the compiled regression",
+    )
+    parser.add_argument(
         "--fbc-flag",
         action="append",
         default=[],
@@ -89,7 +95,12 @@ def main() -> None:
     )
     if not executable.is_file() and executable.with_suffix(".exe").is_file():
         executable = executable.with_suffix(".exe")
-    subprocess.run([str(executable)], check=True, cwd=work_dir)
+    completed = subprocess.run([str(executable)], cwd=work_dir)
+    if completed.returncode != args.expected_exit_code:
+        raise RuntimeError(
+            f"regression exited with {completed.returncode}, "
+            f"expected {args.expected_exit_code}"
+        )
 
 
 if __name__ == "__main__":

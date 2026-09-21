@@ -49,9 +49,11 @@ sub fb_DataReadULongint
 sub fb_DataReadSingle
 sub fb_DataReadDouble
 ---- rtlError
-function fb_ErrorThrowAt
-function fb_ErrorThrowEx
+function fb_ErrorThrowAtCtx
+function fb_ErrorThrowExCtx
 function fb_ErrorSetHandler
+function fb_ErrorHandlerPush
+sub fb_ErrorHandlerExit
 function fb_ErrorGetNum
 function fb_ErrorSetNum
 function fb_ErrorResume

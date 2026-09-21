@@ -479,7 +479,7 @@ sub astProcBegin( byval sym as FBSYMBOL ptr, byval ismain as integer )
 
 	'' local error handler
 	with sym->proc.ext->err
-		.lasthnd = NULL
+		.ctx = NULL
 		.lastmod = NULL
 		.lastfun = NULL
 	end with
@@ -555,9 +555,8 @@ private function hCheckErrHnd _
 			.lastmod = NULL
 		end if
 
-		if( .lasthnd <> NULL ) then
-			rtlErrorSetHandler( astNewVAR( .lasthnd ), FALSE )
-			.lasthnd = NULL
+		if( .ctx <> NULL ) then
+			rtlErrorHandlerExit( astNewADDROF( astNewVAR( .ctx ) ) )
 		end if
 	end with
 
