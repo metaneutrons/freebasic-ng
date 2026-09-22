@@ -113,13 +113,32 @@ def main() -> int:
         for index, flags in enumerate(variant_flags):
             variant_base = workdir / f"variant-{index}"
             variant_source = gfx_source if "-fbgfx" in flags else source
-            run([
+            command = [
                 str(executable),
                 *flags,
                 str(variant_source),
                 "-x",
                 str(variant_base),
-            ], cwd=workdir)
+            ]
+            # Frameworks are not static libraries. Inspect the compiler
+            # driver's command for the Darwin gfx variant so accidentally
+            # passing -lCocoa can never look like a valid link contract.
+            if (
+                args.expected_host.startswith("darwin-")
+                and "-fbgfx" in flags
+                and "-mt" not in flags
+            ):
+                command.insert(1, "-v")
+                link_output = run(command, cwd=workdir)
+                for framework in ("Cocoa", "CoreGraphics"):
+                    expected_framework_arg = f"-framework {framework}"
+                    if expected_framework_arg not in link_output:
+                        raise RuntimeError(
+                            f"Darwin gfx link omitted {expected_framework_arg}:\n"
+                            f"{link_output}"
+                        )
+            else:
+                run(command, cwd=workdir)
             variant_output = (
                 variant_base
                 if variant_base.exists()

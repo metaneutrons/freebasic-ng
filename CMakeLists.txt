@@ -93,6 +93,13 @@ endif()
 # Platform detection (sets FB_TARGET_OS, FB_TARGET_ARCH, FB_TARGET_ID)
 include(cmake/DetectPlatform.cmake)
 
+# Native macOS gfxlib sources are Objective-C. Keep that compiler requirement
+# scoped to Darwin so cross-platform CMake configurations retain their C/ASM
+# toolchain contract.
+if(FB_TARGET_OS STREQUAL "darwin")
+    enable_language(OBJC)
+endif()
+
 # The historical gas64 backend emits GNU assembler for the Linux x86_64 ABI.
 # Keep the CMake option equally narrow until another qualified host exists.
 if(FB_NATIVE_COMPILER_BACKEND STREQUAL "gas64" AND
