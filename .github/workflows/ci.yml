@@ -81,7 +81,7 @@ jobs:
 
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libncurses-dev libffi-dev libx11-dev libxext-dev libxpm-dev libxrandr-dev libxrender-dev libgpm-dev
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libncurses-dev libffi-dev libx11-dev libxext-dev libxpm-dev libxrandr-dev libxrender-dev libgl-dev libgpm-dev
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
