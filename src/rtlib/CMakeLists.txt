@@ -216,6 +216,33 @@ if(FB_NEED_PIC)
     if(FB_DISABLE_OPENGL)
         target_compile_definitions(fbpic PRIVATE DISABLE_OPENGL)
     endif()
+
+    # fbc combines the multithreaded and PIC suffixes when both options are
+    # active.  Keep the CMake installation graph complete so a staged
+    # compiler never selects a libfbmtpic archive that was not built.
+    add_library(fbmtpic STATIC ${RTLIB_ALL_SOURCES})
+    target_include_directories(fbmtpic PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        ${FB_FFI_INCLUDE_DIR})
+    target_compile_options(fbmtpic PRIVATE
+        -fPIC -Wfatal-errors -O2
+        -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables
+        -Wall -Wextra -Wno-unused-parameter -Werror-implicit-function-declaration
+    )
+    target_compile_options(fbmtpic PRIVATE ${FB_RT_DEBUG_C_FLAGS})
+    target_compile_definitions(fbmtpic PRIVATE ${FB_RT_DEBUG_C_DEFINITIONS} ENABLE_MT)
+    if(FB_DISABLE_X11)
+        target_compile_definitions(fbmtpic PRIVATE DISABLE_X11)
+    endif()
+    if(FB_DISABLE_GPM)
+        target_compile_definitions(fbmtpic PRIVATE DISABLE_GPM)
+    endif()
+    if(FB_DISABLE_FFI)
+        target_compile_definitions(fbmtpic PRIVATE DISABLE_FFI)
+    endif()
+    if(FB_DISABLE_OPENGL)
+        target_compile_definitions(fbmtpic PRIVATE DISABLE_OPENGL)
+    endif()
 endif()
 
 # --- fbrt0.o (runtime startup object) ---
@@ -269,7 +296,7 @@ if(TARGET fbmt)
     install(TARGETS fbmt ARCHIVE DESTINATION "${FB_INSTALL_LIBDIR}")
 endif()
 if(FB_NEED_PIC)
-    install(TARGETS fbpic ARCHIVE DESTINATION "${FB_INSTALL_LIBDIR}")
+    install(TARGETS fbpic fbmtpic ARCHIVE DESTINATION "${FB_INSTALL_LIBDIR}")
     if(DEFINED FBRT0PIC_OBJ)
         install(FILES "${FBRT0PIC_OBJ}" DESTINATION "${FB_INSTALL_LIBDIR}" RENAME "fbrt0pic.o")
     endif()

@@ -64,63 +64,54 @@ endif()
 
 set(GFXLIB_ALL_SOURCES ${GFXLIB_COMMON_SOURCES} ${GFXLIB_PLATFORM_SOURCES} ${GFXLIB_ARCH_SOURCES})
 
-# --- libfbgfx ---
-add_library(fbgfx STATIC ${GFXLIB_ALL_SOURCES})
+function(fb_add_gfxlib_variant target)
+    cmake_parse_arguments(_fb_gfx "MULTITHREADED;PIC" "" "" ${ARGN})
 
-target_include_directories(fbgfx PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}"
-    "$<$<PLATFORM_ID:Darwin,Linux,FreeBSD,OpenBSD,NetBSD>:${CMAKE_CURRENT_SOURCE_DIR}/unix>"
-    "$<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/win32>"
-    "${CMAKE_SOURCE_DIR}/src/rtlib"
-)
+    add_library(${target} STATIC ${GFXLIB_ALL_SOURCES})
+    target_include_directories(${target} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "$<$<PLATFORM_ID:Darwin,Linux,FreeBSD,OpenBSD,NetBSD>:${CMAKE_CURRENT_SOURCE_DIR}/unix>"
+        "$<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/win32>"
+        "${CMAKE_SOURCE_DIR}/src/rtlib"
+    )
+    target_compile_options(${target} PRIVATE
+        -Wfatal-errors -O2
+        -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables
+        -Wall -Wextra -Wno-unused-parameter -Werror-implicit-function-declaration
+    )
+    if(_fb_gfx_PIC)
+        target_compile_options(${target} PRIVATE -fPIC)
+    endif()
+    if(FB_COMPILER_DEBUG)
+        target_compile_options(${target} PRIVATE -g -UNDEBUG -Werror)
+        target_compile_definitions(${target} PRIVATE DEBUG)
+    endif()
+    if(_fb_gfx_MULTITHREADED)
+        target_compile_definitions(${target} PRIVATE ENABLE_MT)
+    endif()
+    if(FB_DISABLE_X11)
+        target_compile_definitions(${target} PRIVATE DISABLE_X11)
+    endif()
+    if(FB_DISABLE_OPENGL)
+        target_compile_definitions(${target} PRIVATE DISABLE_OPENGL)
+    endif()
 
-target_compile_options(fbgfx PRIVATE
-    -Wfatal-errors -O2
-    -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables
-    -Wall -Wextra -Wno-unused-parameter -Werror-implicit-function-declaration
-)
-if(FB_COMPILER_DEBUG)
-    target_compile_options(fbgfx PRIVATE -g -UNDEBUG -Werror)
-    target_compile_definitions(fbgfx PRIVATE DEBUG)
-endif()
+    # X11 include dirs (if found above)
+    if(UNIX AND NOT FB_DISABLE_X11 AND X11_FOUND)
+        target_include_directories(${target} PRIVATE ${X11_INCLUDE_DIR})
+    endif()
+endfunction()
 
-# Feature flags (inherited from rtlib settings)
-if(FB_DISABLE_X11)
-    target_compile_definitions(fbgfx PRIVATE DISABLE_X11)
-endif()
-if(FB_DISABLE_OPENGL)
-    target_compile_definitions(fbgfx PRIVATE DISABLE_OPENGL)
-endif()
-
-# X11 include dirs (if found above)
-if(UNIX AND NOT FB_DISABLE_X11 AND X11_FOUND)
-    target_include_directories(fbgfx PRIVATE ${X11_INCLUDE_DIR})
-endif()
-
-# --- Threadsafe variant ---
-add_library(fbgfxmt STATIC ${GFXLIB_ALL_SOURCES})
-target_include_directories(fbgfxmt PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}"
-    "$<$<PLATFORM_ID:Darwin,Linux,FreeBSD,OpenBSD,NetBSD>:${CMAKE_CURRENT_SOURCE_DIR}/unix>"
-    "$<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/win32>"
-    "${CMAKE_SOURCE_DIR}/src/rtlib"
-)
-target_compile_options(fbgfxmt PRIVATE
-    -Wfatal-errors -O2
-    -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables
-    -Wall -Wextra -Wno-unused-parameter -Werror-implicit-function-declaration
-)
-if(FB_COMPILER_DEBUG)
-    target_compile_options(fbgfxmt PRIVATE -g -UNDEBUG -Werror)
-    target_compile_definitions(fbgfxmt PRIVATE DEBUG)
-endif()
-target_compile_definitions(fbgfxmt PRIVATE ENABLE_MT)
-if(FB_DISABLE_X11)
-    target_compile_definitions(fbgfxmt PRIVATE DISABLE_X11)
-endif()
-if(FB_DISABLE_OPENGL)
-    target_compile_definitions(fbgfxmt PRIVATE DISABLE_OPENGL)
+# fbc composes the mt and pic suffixes independently.  Build the same matrix
+# here so every archive it can select has a matching staged installation.
+set(GFXLIB_TARGETS fbgfx fbgfxmt)
+fb_add_gfxlib_variant(fbgfx)
+fb_add_gfxlib_variant(fbgfxmt MULTITHREADED)
+if(FB_NEED_PIC)
+    list(APPEND GFXLIB_TARGETS fbgfxpic fbgfxmtpic)
+    fb_add_gfxlib_variant(fbgfxpic PIC)
+    fb_add_gfxlib_variant(fbgfxmtpic MULTITHREADED PIC)
 endif()
 
 # --- Installation ---
-install(TARGETS fbgfx fbgfxmt ARCHIVE DESTINATION "${FB_INSTALL_LIBDIR}")
+install(TARGETS ${GFXLIB_TARGETS} ARCHIVE DESTINATION "${FB_INSTALL_LIBDIR}")
