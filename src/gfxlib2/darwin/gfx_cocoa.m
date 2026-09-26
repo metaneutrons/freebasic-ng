@@ -25,6 +25,18 @@ static int cocoa_mouse_x = -1, cocoa_mouse_y = -1, cocoa_mouse_z, cocoa_buttons;
 static int cocoa_window_x, cocoa_window_y;
 static BOOL cocoa_virtual_down[128];
 
+static int cocoa_screen_refresh_rate(NSScreen *screen)
+{
+    /* maximumFramesPerSecond arrived in macOS 12. Keep the graphics driver
+     * usable on the macOS 11 deployment target. */
+    if (@available(macOS 12.0, *)) {
+        int refresh = (int)[screen maximumFramesPerSecond];
+        if (refresh > 0)
+            return refresh;
+    }
+    return 60;
+}
+
 /* Carbon virtual key codes describe physical key positions, not typed text.
  * Keep the mapping independent of the deprecated Carbon event APIs. */
 static const unsigned char cocoa_scancodes[128] = {
@@ -392,8 +404,7 @@ static int cocoa_init(char *title, int w, int h, int depth,
         [NSApplication sharedApplication];
         [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
         [NSApp finishLaunching];
-        int display_refresh = (int)[[NSScreen mainScreen] maximumFramesPerSecond];
-        __fb_gfx->refresh_rate = display_refresh > 0 ? display_refresh : 60;
+        __fb_gfx->refresh_rate = cocoa_screen_refresh_rate([NSScreen mainScreen]);
 
         NSRect rect = NSMakeRect(0, 0, w, h);
         NSUInteger style = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
@@ -632,7 +643,7 @@ void fb_hScreenInfo(ssize_t *width, ssize_t *height,
             *width = (ssize_t)frame.size.width;
             *height = (ssize_t)frame.size.height;
             *depth = 32;
-            *refresh = (ssize_t)[screen maximumFramesPerSecond];
+            *refresh = cocoa_screen_refresh_rate(screen);
         }
     }
 }
