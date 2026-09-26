@@ -87,7 +87,7 @@ build() {
 check() {
     ./build/src/compiler/fbc --version | grep -F "Version \$pkgver"
     cmake --install build --prefix "\$srcdir/check-stage"
-    python "${source_root}/scripts/verify-installed-fbc.py" \
+    python "${source_root}/scripts/verify-installed-fbc.py" \\
         --prefix "\$srcdir/check-stage" --expected-host "linux-\$CARCH" --require-gfxlib
 }
 
