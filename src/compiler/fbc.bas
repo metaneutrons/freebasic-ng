@@ -89,6 +89,9 @@ type FBCCTX
 	'' with the same input libs)
 	finallibs           as TSTRSET
 	finallibpaths       as TSTRSET
+	'' Darwin frameworks are linker arguments, not -l libraries. Keep them
+	'' separate so the generic library loop never turns Cocoa into -lCocoa.
+	darwinframeworks    as TSTRSET
 
 	outname             as zstring * FB_MAXPATHLEN+1
 	mainname            as zstring * FB_MAXPATHLEN+1
@@ -215,6 +218,7 @@ private sub fbcInit( )
 
 	strsetInit(@fbc.finallibs, FBC_INITFILES\2)
 	strsetInit(@fbc.finallibpaths, FBC_INITFILES\2)
+	strsetInit(@fbc.darwinframeworks, FBC_INITFILES\4)
 
 	fbGlobalInit()
 
@@ -1338,6 +1342,18 @@ private function hLinkFiles( ) as integer
 			i = listGetNext(i)
 		wend
 	end scope
+
+	'' Frameworks must follow static archives on Darwin. They are passed to
+	'' the Clang driver as -framework <name>, never through the -l loop above.
+	if( fbGetOption( FB_COMPOPT_TARGET ) = FB_COMPTARGET_DARWIN ) then
+		scope
+			dim as TSTRSETITEM ptr i = listGetHead(@fbc.darwinframeworks.list)
+			while( i )
+				ldcline += " -framework " + i->s
+				i = listGetNext(i)
+			wend
+		end scope
+	end if
 
 	if (fbGetOption( FB_COMPOPT_TARGET ) <> FB_COMPTARGET_DARWIN) then
 		if( fbGetOption( FB_COMPOPT_TARGET ) <> FB_COMPTARGET_JS ) then
@@ -4349,6 +4365,10 @@ private sub fbcAddDefLib(byval libname as zstring ptr)
 	strsetAdd(@fbc.finallibs, *libname, TRUE)
 end sub
 
+private sub fbcAddDarwinFramework(byval framework as zstring ptr)
+	strsetAdd(@fbc.darwinframeworks, *framework, TRUE)
+end sub
+
 private function hGetFbLibNameSuffix( ) as string
 	dim s as string
 	if( fbGetOption( FB_COMPOPT_MULTITHREADED ) ) then
@@ -4377,9 +4397,24 @@ private sub hAddDefaultLibs( )
 			fbcAddDefLib( "gdi32" )
 			fbcAddDefLib( "winmm" )
 
+		case FB_COMPTARGET_DARWIN
+			fbcAddDarwinFramework( "Cocoa" )
+			fbcAddDarwinFramework( "CoreGraphics" )
+
+			'' Keep explicitly enabled historical XQuartz builds linkable while
+			'' the default Darwin path moves to native Cocoa.
+			#if defined(ENABLE_XQUARTZ)
+				fbcAddDefLibPath( "/opt/X11/lib" )
+				fbcAddDefLib( "X11" )
+				fbcAddDefLib( "Xext" )
+				fbcAddDefLib( "Xpm" )
+				fbcAddDefLib( "Xrandr" )
+				fbcAddDefLib( "Xrender" )
+			#endif
+
 		case FB_COMPTARGET_LINUX, FB_COMPTARGET_FREEBSD, _
 			FB_COMPTARGET_OPENBSD, FB_COMPTARGET_NETBSD, _
-			FB_COMPTARGET_DARWIN, FB_COMPTARGET_DRAGONFLY, FB_COMPTARGET_SOLARIS
+			FB_COMPTARGET_DRAGONFLY, FB_COMPTARGET_SOLARIS
 
 			#if defined(__FB_LINUX__) or _
 				defined(__FB_FREEBSD__) or _
