@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.25.0](https://github.com/metaneutrons/freebasic-ng/compare/v1.24.4...v1.25.0) (2026-09-26)
+
+
+### Features
+
+* **darwin:** add native Cocoa graphics baseline ([#175](https://github.com/metaneutrons/freebasic-ng/issues/175)) ([a944e5a](https://github.com/metaneutrons/freebasic-ng/commit/a944e5af71fba4529ac9f7c889ac5b615c885743))
+* **darwin:** complete native Cocoa input and window controls ([#176](https://github.com/metaneutrons/freebasic-ng/issues/176)) ([13512e4](https://github.com/metaneutrons/freebasic-ng/commit/13512e4155941d6fad077a849ed2e1135585da6d))
+
+
+### Bug Fixes
+
+* **build:** stop building the PIC runtime for Darwin ([#162](https://github.com/metaneutrons/freebasic-ng/issues/162)) ([b8fa2dd](https://github.com/metaneutrons/freebasic-ng/commit/b8fa2dd7b5abdc8267434feef2e1ba7e63f9934f))
+* **compiler:** read tool output with LINE INPUT ([#163](https://github.com/metaneutrons/freebasic-ng/issues/163)) ([6287bf8](https://github.com/metaneutrons/freebasic-ng/commit/6287bf83c60507ece5b8cc41d3a001c830913ade))
+* **darwin:** align packaged binaries with macOS 11 target ([#179](https://github.com/metaneutrons/freebasic-ng/issues/179)) ([8356d3c](https://github.com/metaneutrons/freebasic-ng/commit/8356d3c6f613daced366e403679befbd380dafda))
+* **darwin:** compile user objects for macOS 11 ([#180](https://github.com/metaneutrons/freebasic-ng/issues/180)) ([44b5f1b](https://github.com/metaneutrons/freebasic-ng/commit/44b5f1b7002fe252871286f342e98e4f825f8e0b))
+* **release:** generate Homebrew-auditable formula ([#181](https://github.com/metaneutrons/freebasic-ng/issues/181)) ([a60609d](https://github.com/metaneutrons/freebasic-ng/commit/a60609d219e70ba1c145109b157960d85b87f019))
+* **release:** include public notes before publishing candidate ([#178](https://github.com/metaneutrons/freebasic-ng/issues/178)) ([ac80123](https://github.com/metaneutrons/freebasic-ng/commit/ac80123b463de38d84d701c0f20992c20a7c5f56))
+* repair the Darwin toolchain and the clang error path ([#160](https://github.com/metaneutrons/freebasic-ng/issues/160)) ([b80eb9e](https://github.com/metaneutrons/freebasic-ng/commit/b80eb9edc159484b70ee487942e58ab411916d90))
+* **runtime:** restore frames for nonlocal error handlers ([#165](https://github.com/metaneutrons/freebasic-ng/issues/165)) ([3094c9c](https://github.com/metaneutrons/freebasic-ng/commit/3094c9c18903403c794ba17af8f390e51dd0cb76))
+
 ## [1.24.4](https://github.com/metaneutrons/freebasic-ng/compare/v1.24.3...v1.24.4) (2026-09-13)
 
 
