@@ -18,6 +18,17 @@ declare the X11 link dependencies needed for programs using `-fbgfx`; an
 existing installation should be upgraded as a complete package or versioned
 archive directory, not by copying only `fbc` over the old version.
 
+## macOS archives target macOS 11.0
+
+The compiler, runtime startup object and native Cocoa graphics driver in the
+macOS archives now declare macOS 11.0 as their minimum deployment target.
+Earlier builds could inherit the newer macOS version of the build runner, even
+though `fbc` linked user programs for macOS 11.0. On macOS 11, the Cocoa driver
+reports a 60 Hz fallback refresh rate because the display refresh-rate API it
+uses on newer systems was introduced in macOS 12. This declares a build and API
+compatibility target; the release is not being interactively tested on
+macOS 11.
+
 ## macOS: `DATA` object files are not interchangeable across this release
 
 `DATA` statements are compiled into a descriptor whose layout was packed on
