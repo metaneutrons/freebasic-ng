@@ -123,6 +123,9 @@ def main() -> int:
             raise FileNotFoundError(f"compiler did not produce {output_base} or {output_base}.exe")
         if args.expected_host.startswith("darwin-"):
             verify_macos_deployment(output)
+            object_output = workdir / "smoke.o"
+            run([str(executable), "-c", str(source), "-o", str(object_output)], cwd=workdir)
+            verify_macos_deployment(object_output)
         result = run([str(output)], cwd=workdir).strip()
         expected_output = f"FreeBASIC-NG smoke: {expected_version}"
         if result != expected_output:

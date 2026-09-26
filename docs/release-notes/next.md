@@ -21,7 +21,8 @@ archive directory, not by copying only `fbc` over the old version.
 ## macOS archives target macOS 11.0
 
 The compiler, runtime startup object and native Cocoa graphics driver in the
-macOS archives now declare macOS 11.0 as their minimum deployment target.
+macOS archives, as well as object files compiled by `fbc`, now declare
+macOS 11.0 as their minimum deployment target.
 Earlier builds could inherit the newer macOS version of the build runner, even
 though `fbc` linked user programs for macOS 11.0. On macOS 11, the Cocoa driver
 reports a 60 Hz fallback refresh rate because the display refresh-rate API it
