@@ -121,6 +121,18 @@ jobs:
           cmake --install build --prefix stage
           python3 scripts/verify-installed-fbc.py --prefix stage --expected-host "${{ matrix.expected_host }}" --require-gfxlib
 
+      - name: Smoke-test native Cocoa graphics
+        if: runner.os == 'macOS'
+        run: python3 scripts/verify-cocoa-gfx.py --prefix stage
+
+      - name: Show Cocoa crash report
+        if: failure() && runner.os == 'macOS'
+        run: |
+          report_dir="$HOME/Library/Logs/DiagnosticReports"
+          if [ -d "$report_dir" ]; then
+            find "$report_dir" -type f -name 'cocoa-baseline-smoke*' -print -exec sed -n '1,160p' {} \;
+          fi
+
       - name: Test staged installation (Windows)
         if: matrix.family == 'windows'
         shell: msys2 {0}
