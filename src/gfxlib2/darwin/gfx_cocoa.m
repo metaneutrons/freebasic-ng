@@ -46,8 +46,12 @@ static const unsigned char cocoa_scancodes[128] = {
     [0x38] = SC_LSHIFT, [0x39] = SC_CAPSLOCK, [0x3a] = SC_ALT,
     [0x3b] = SC_CONTROL, [0x3c] = SC_RSHIFT, [0x3d] = SC_ALTGR,
     [0x3e] = SC_CONTROL, [0x41] = SC_DELETE, [0x43] = SC_MULTIPLY,
-    [0x45] = SC_PLUS, [0x47] = SC_CLEAR, [0x4c] = SC_ENTER,
-    [0x4e] = SC_MINUS, [0x60] = SC_F5, [0x61] = SC_F6,
+    [0x45] = SC_PLUS, [0x47] = SC_CLEAR, [0x4b] = SC_SLASH,
+    [0x4c] = SC_ENTER, [0x4e] = SC_MINUS, [0x51] = SC_EQUALS,
+    [0x52] = SC_INSERT, [0x53] = SC_END, [0x54] = SC_DOWN,
+    [0x55] = SC_PAGEDOWN, [0x56] = SC_LEFT, [0x57] = SC_CLEAR,
+    [0x58] = SC_RIGHT, [0x59] = SC_HOME, [0x5b] = SC_UP,
+    [0x5c] = SC_PAGEUP, [0x60] = SC_F5, [0x61] = SC_F6,
     [0x62] = SC_F7, [0x63] = SC_F3, [0x64] = SC_F8,
     [0x65] = SC_F9, [0x67] = SC_F11, [0x6d] = SC_F10,
     [0x6f] = SC_F12, [0x72] = SC_INSERT, [0x73] = SC_HOME,
@@ -97,10 +101,10 @@ static void cocoa_key(NSEvent *event, int type)
         int extended = fb_hScancodeToExtendedKey(scancode);
         if (scancode == SC_F11) extended = KEY_F11;
         if (scancode == SC_F12) extended = KEY_F12;
-        if (extended)
-            fb_hPostKey(extended);
-        else if (ascii)
+        if (ascii)
             fb_hPostKey(ascii);
+        else if (extended)
+            fb_hPostKey(extended);
         for (NSUInteger i = 1; i < bytes.length; ++i)
             fb_hPostKey(characters[i]);
     }

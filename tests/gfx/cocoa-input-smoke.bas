@@ -50,6 +50,17 @@ if found = 0 then end 30
 test_key(&h00, utf8_umlaut, 1)
 while screenevent(@e): wend
 
+' Numeric keypad text takes precedence over its DOS navigation scancode.
+while inkey$ <> "": wend
+test_key(&h53, "1", 0)
+found = 0
+while screenevent(@e)
+    if e.type = fb.EVENT_KEY_PRESS and e.scancode = fb.SC_END and e.ascii = asc("1") then found = 1
+wend
+if found = 0 or inkey$ <> "1" then end 31
+test_key(&h53, "1", 1)
+while screenevent(@e): wend
+
 test_key(&h00, "a", 0)
 while screenevent(@e): wend
 test_focus_lost()
