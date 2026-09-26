@@ -44,9 +44,14 @@ mkdir -p "$WORK_DIR" "$OUTPUT_DIR"
 build_dir="$WORK_DIR/build"
 package_root="$WORK_DIR/package"
 cmake -S "$SOURCE_DIR" -B "$build_dir" -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release -DFB_BUILD_GFXLIB=OFF
+  -DCMAKE_BUILD_TYPE=Release -DFB_BUILD_GFXLIB=ON
 cmake --build "$build_dir"
 DESTDIR="$package_root" cmake --install "$build_dir" --prefix /usr
+
+expected_host="linux-x86_64"
+[[ "$architecture" == arm64 ]] && expected_host="linux-aarch64"
+python3 "$SOURCE_DIR/scripts/verify-installed-fbc.py" \
+  --prefix "$package_root/usr" --expected-host "$expected_host" --require-gfxlib
 
 [[ -x "$package_root/usr/bin/fbc" ]] || fail 'CMake installation contains no fbc'
 # dpkg-shlibdeps derives substitution variables in the context of a Debian
@@ -84,7 +89,7 @@ Section: devel
 Priority: optional
 Architecture: ${architecture}
 Maintainer: metaneutrons <https://github.com/metaneutrons>
-Depends: gcc, binutils, libncurses-dev, ${runtime_dependencies}
+Depends: gcc, binutils, libncurses-dev, libffi-dev, libgpm-dev, libx11-dev, libxext-dev, libxpm-dev, libxrandr-dev, libxrender-dev, libgl-dev, ${runtime_dependencies}
 Description: FreeBASIC-NG compiler
  FreeBASIC-NG is an independent, maintained FreeBASIC compiler fork.
 CONTROL

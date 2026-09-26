@@ -6,6 +6,16 @@ the previous release installed. This file collects those consequences between
 releases. Whoever publishes the draft release merges this file into the release
 body and then resets the file to the template at the end.
 
+## Graphics libraries are included in the Tier 1 packages
+
+The previous host archives and package builds omitted `libfbgfx`. This release
+includes the standard and multithreaded graphics archives on all six Tier 1
+hosts, plus PIC graphics archives on supported Linux hosts. The Debian,
+Homebrew and AUR packages include the same graphics support. Linux packages
+declare the X11 link dependencies needed for programs using `-fbgfx`; an
+existing installation should be upgraded as a complete package or versioned
+archive directory, not by copying only `fbc` over the old version.
+
 ## macOS: `DATA` object files are not interchangeable across this release
 
 `DATA` statements are compiled into a descriptor whose layout was packed on
