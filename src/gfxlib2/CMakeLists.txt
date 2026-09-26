@@ -6,6 +6,14 @@ file(GLOB GFXLIB_COMMON_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.c")
 
 if(WIN32)
     file(GLOB GFXLIB_PLATFORM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/win32/*.c")
+elseif(FB_TARGET_OS STREQUAL "darwin" AND NOT FB_ENABLE_XQUARTZ)
+    # The native backend owns the platform hooks and driver list.  Do not also
+    # compile gfx_unix.c, which only registers X11 (or an empty driver list).
+    set(GFXLIB_PLATFORM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/darwin/gfx_cocoa.m")
+    set_source_files_properties(${GFXLIB_PLATFORM_SOURCES}
+        PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+    set(FB_DISABLE_X11 ON)
+    set(FB_DISABLE_OPENGL ON)
 elseif(UNIX)
     # Base unix source (always needed)
     set(GFXLIB_UNIX_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/unix/gfx_unix.c")
