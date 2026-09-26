@@ -163,6 +163,10 @@ static int cocoa_init(char *title, int w, int h, int depth,
                                                        defer:NO];
         if (!cocoa_window)
             return -1;
+        /* ARC owns this NSWindow through cocoa_window.  The AppKit default
+         * would release it again on close, leaving that strong reference
+         * dangling when SCREEN 0 tears down a second graphics mode. */
+        [cocoa_window setReleasedWhenClosed:NO];
 
         cocoa_view = [[FBCocoaView alloc] initWithFrame:rect];
         cocoa_delegate = [[FBCocoaWindowDelegate alloc] init];
