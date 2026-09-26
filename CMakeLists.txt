@@ -1,5 +1,13 @@
 cmake_minimum_required(VERSION 3.20)
 
+# The compiler links user programs for macOS 11.0. Build the compiler and its
+# installed runtime for the same minimum OS, independent of the runner version.
+# This must be set before project() initializes the Apple toolchain.
+if(APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING
+        "Minimum macOS release for FreeBASIC-NG binaries")
+endif()
+
 # version.mk is the source of truth for the compiler version.  Keeping CMake
 # derived from it prevents the build and the legacy packaging metadata from
 # silently drifting apart.

@@ -22,6 +22,13 @@ def run(command: list[str], *, cwd: Path | None = None) -> str:
     return result.stdout
 
 
+def verify_macos_deployment(path: Path) -> None:
+    output = run(["xcrun", "vtool", "-show-build", str(path)])
+    match = re.search(r"(?m)^\s*minos\s+(\d+)\.(\d+)(?:\.\d+)?\s*$", output)
+    if match is None or (int(match.group(1)), int(match.group(2))) != (11, 0):
+        raise RuntimeError(f"{path} must target macOS 11.0, got:\n{output}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prefix", type=Path, required=True)
@@ -77,6 +84,10 @@ def main() -> int:
             f"staged libraries missing below {libdir}: {', '.join(missing_archives)}"
         )
 
+    if args.expected_host.startswith("darwin-"):
+        verify_macos_deployment(executable)
+        verify_macos_deployment(libdir / "fbrt0.o")
+
     if args.require_gfxlib:
         platform_member = (
             "gfx_cocoa" if args.expected_host.startswith("darwin-")
@@ -110,6 +121,8 @@ def main() -> int:
         output = output_base if output_base.exists() else output_base.with_suffix(".exe")
         if not output.is_file():
             raise FileNotFoundError(f"compiler did not produce {output_base} or {output_base}.exe")
+        if args.expected_host.startswith("darwin-"):
+            verify_macos_deployment(output)
         result = run([str(output)], cwd=workdir).strip()
         expected_output = f"FreeBASIC-NG smoke: {expected_version}"
         if result != expected_output:

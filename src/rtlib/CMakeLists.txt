@@ -89,6 +89,12 @@ set(FB_RT_CMAKE_C_FLAGS)
 if(CMAKE_C_FLAGS)
     separate_arguments(FB_RT_CMAKE_C_FLAGS NATIVE_COMMAND "${CMAKE_C_FLAGS}")
 endif()
+if(FB_TARGET_OS STREQUAL "darwin" AND CMAKE_OSX_DEPLOYMENT_TARGET)
+    # fbrt0.o is compiled by a custom command, so it does not inherit CMake's
+    # deployment-target flag as the regular library targets do.
+    list(APPEND FB_RT_CMAKE_C_FLAGS
+        "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+endif()
 if(FB_COMPILER_DEBUG)
     # Release presets add -DNDEBUG.  Travis did not, and DEBUG assertions
     # would otherwise disappear while their variables still compile in.
