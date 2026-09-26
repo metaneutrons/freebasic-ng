@@ -70,8 +70,8 @@ pkgdesc="FreeBASIC-NG compiler"
 arch=('x86_64' 'aarch64')
 url="https://github.com/metaneutrons/freebasic-ng"
 license=('GPL-2.0-or-later' 'LGPL-2.1-or-later')
-depends=('gcc' 'binutils' 'ncurses')
-makedepends=('ca-certificates' 'cmake' 'ninja' 'python' 'libx11' 'gpm' 'libffi')
+depends=('gcc' 'binutils' 'ncurses' 'libx11' 'libxext' 'libxpm' 'libxrandr' 'libxrender' 'gpm' 'libffi' 'libglvnd')
+makedepends=('ca-certificates' 'cmake' 'ninja' 'python')
 # fbc invokes ld directly, so its runtime archives must not contain LTO IR.
 options=('!lto' 'staticlibs')
 conflicts=('freebasic' 'freebasic-ng-bin')
@@ -80,12 +80,15 @@ sha256sums=('${source_sha}')
 
 build() {
     cmake -S "${source_root}" -B build -G Ninja \\
-        -DCMAKE_BUILD_TYPE=Release -DFB_BUILD_GFXLIB=OFF
+        -DCMAKE_BUILD_TYPE=Release -DFB_BUILD_GFXLIB=ON
     cmake --build build
 }
 
 check() {
     ./build/src/compiler/fbc --version | grep -F "Version \$pkgver"
+    cmake --install build --prefix "\$srcdir/check-stage"
+    python "${source_root}/scripts/verify-installed-fbc.py" \\
+        --prefix "\$srcdir/check-stage" --expected-host "linux-\$CARCH" --require-gfxlib
 }
 
 package() {

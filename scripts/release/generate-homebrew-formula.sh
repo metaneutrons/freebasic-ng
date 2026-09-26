@@ -102,6 +102,14 @@ class FreebasicNg < Formula
     output = testpath/"smoke"
     source.write 'Print "FreeBASIC-NG package smoke"' + "\\n"
     system bin/"fbc", source, "-x", output
+    gfx_source = testpath/"gfx-smoke.bas"
+    gfx_output = testpath/"gfx-smoke"
+    gfx_source.write '#include once "fbgfx.bi"' + "\\n" +
+      'Dim w As Integer, h As Integer, d As Integer' + "\\n" +
+      'ScreenInfo w, h, d' + "\\n" +
+      'Print "FreeBASIC-NG graphics smoke"' + "\\n"
+    system bin/"fbc", "-fbgfx", gfx_source, "-x", gfx_output
+    assert_equal "FreeBASIC-NG graphics smoke\\n", shell_output(gfx_output)
     assert_equal "FreeBASIC-NG package smoke\\n", shell_output(output)
   end
 end

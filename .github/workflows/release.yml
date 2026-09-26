@@ -113,6 +113,7 @@ jobs:
               mingw-w64-x86_64-cmake
               mingw-w64-x86_64-ninja
               mingw-w64-x86_64-gcc
+              mingw-w64-x86_64-libffi
               python
           - name: win32-aarch64
             runner: windows-11-arm
@@ -124,6 +125,7 @@ jobs:
               mingw-w64-clang-aarch64-cmake
               mingw-w64-clang-aarch64-ninja
               mingw-w64-clang-aarch64-gcc
+              mingw-w64-clang-aarch64-libffi
               python
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
@@ -132,11 +134,11 @@ jobs:
 
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libncurses-dev libx11-dev libgpm-dev
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libncurses-dev libffi-dev libx11-dev libxext-dev libxpm-dev libxrandr-dev libxrender-dev libgl-dev libgpm-dev
 
       - name: Install macOS build dependencies
         if: runner.os == 'macOS'
-        run: brew install cmake ninja
+        run: brew install cmake ninja libffi
 
       - name: Set up MSYS2
         if: matrix.family == 'windows'
@@ -153,12 +155,16 @@ jobs:
           set -euo pipefail
           python3 scripts/check-version.py
           python3 scripts/fetch-bootstrap-seed.py --target "${{ matrix.expected_host }}" --cache-dir build/seed-check
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DFB_BUILD_GFXLIB=OFF
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DFB_BUILD_GFXLIB=ON
           cmake --build build
           cmake --install build --prefix package/freebasic-ng-${{ needs.metadata.outputs.version }}-${{ matrix.name }}
           python3 scripts/verify-installed-fbc.py \
             --prefix package/freebasic-ng-${{ needs.metadata.outputs.version }}-${{ matrix.name }} \
-            --expected-host "${{ matrix.expected_host }}"
+            --expected-host "${{ matrix.expected_host }}" --require-gfxlib
+
+      - name: Run native Cocoa window tests (staged compiler)
+        if: runner.os == 'macOS'
+        run: python3 scripts/verify-cocoa-gfx.py --prefix package/freebasic-ng-${{ needs.metadata.outputs.version }}-${{ matrix.name }}
 
       - name: Build, stage and smoke-test (Windows)
         if: matrix.family == 'windows'
@@ -167,12 +173,12 @@ jobs:
           set -euo pipefail
           python scripts/check-version.py
           python scripts/fetch-bootstrap-seed.py --target "${{ matrix.expected_host }}" --cache-dir build/seed-check
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DFB_BUILD_GFXLIB=OFF
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DFB_BUILD_GFXLIB=ON
           cmake --build build
           cmake --install build --prefix package/freebasic-ng-${{ needs.metadata.outputs.version }}-${{ matrix.name }}
           python scripts/verify-installed-fbc.py \
             --prefix package/freebasic-ng-${{ needs.metadata.outputs.version }}-${{ matrix.name }} \
-            --expected-host "${{ matrix.expected_host }}"
+            --expected-host "${{ matrix.expected_host }}" --require-gfxlib
 
       - name: Archive and clean-room test (Unix)
         if: matrix.family == 'unix'
@@ -188,8 +194,15 @@ jobs:
           mkdir -p dist clean-room
           # BSD tar on macOS otherwise serializes Finder metadata as ._ files.
           COPYFILE_DISABLE=1 tar -cJf "$archive" -C package "$root"
+          python3 scripts/verify-release-archive.py --archive "$archive" \
+            --root "$root" --expected-host "$EXPECTED_HOST"
           tar -xJf "$archive" -C clean-room
-          python3 scripts/verify-installed-fbc.py --prefix "clean-room/$root" --expected-host "$EXPECTED_HOST"
+          python3 scripts/verify-installed-fbc.py --prefix "clean-room/$root" \
+            --expected-host "$EXPECTED_HOST" --require-gfxlib
+
+      - name: Run native Cocoa window tests (extracted archive)
+        if: runner.os == 'macOS'
+        run: python3 scripts/verify-cocoa-gfx.py --prefix clean-room/freebasic-ng-${{ needs.metadata.outputs.version }}-${{ matrix.name }}
 
       - name: Archive and clean-room test (Windows)
         if: matrix.family == 'windows'
@@ -220,7 +233,10 @@ jobs:
                   raise RuntimeError(f"corrupt ZIP member: {corrupt_member}")
               input.extractall("clean-room")
           PY
-          python scripts/verify-installed-fbc.py --prefix "clean-room/$root" --expected-host "$EXPECTED_HOST"
+          python scripts/verify-release-archive.py --archive "$archive" \
+            --root "$root" --expected-host "$EXPECTED_HOST"
+          python scripts/verify-installed-fbc.py --prefix "clean-room/$root" \
+            --expected-host "$EXPECTED_HOST" --require-gfxlib
 
       - id: previous-archive
         name: Download the preceding stable release archive
@@ -288,7 +304,8 @@ jobs:
             --previous "$PREVIOUS_ARCHIVE" \
             --candidate "dist/${root}.tar.xz" \
             --work-dir archive-replace)
-          python3 scripts/verify-installed-fbc.py --prefix "$active" --expected-host "$EXPECTED_HOST"
+          python3 scripts/verify-installed-fbc.py --prefix "$active" \
+            --expected-host "$EXPECTED_HOST" --require-gfxlib
 
       - name: Replace a previous Windows archive installation
         if: matrix.family == 'windows'
@@ -305,7 +322,8 @@ jobs:
             --previous "$PREVIOUS_ARCHIVE" \
             --candidate "dist/${root}.zip" \
             --work-dir archive-replace)
-          python scripts/verify-installed-fbc.py --prefix "$active" --expected-host "$EXPECTED_HOST"
+          python scripts/verify-installed-fbc.py --prefix "$active" \
+            --expected-host "$EXPECTED_HOST" --require-gfxlib
 
       - name: Generate an SPDX SBOM
         uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
@@ -378,7 +396,8 @@ jobs:
               apt-get update
               apt-get install -y --no-install-recommends \
                 build-essential ca-certificates cmake dpkg-dev libffi-dev libgpm-dev \
-                libncurses-dev libx11-dev ninja-build python3
+                libncurses-dev libx11-dev libxext-dev libxpm-dev \
+                libxrandr-dev libxrender-dev libgl-dev ninja-build python3
               /source/scripts/release/build-debian-package.sh \
                 --source-dir /source --work-dir /work/build --output-dir /out \
                 --version "${VERSION}"
@@ -403,6 +422,9 @@ jobs:
               cd /tmp
               fbc smoke.bas -x smoke
               test "$(./smoke)" = "FreeBASIC-NG Debian package smoke"
+              printf "#include once \"fbgfx.bi\"\nDim w As Integer, h As Integer, d As Integer\nScreenInfo w, h, d\nPrint \"FreeBASIC-NG Debian graphics smoke\"\n" > /tmp/gfx-smoke.bas
+              fbc -fbgfx gfx-smoke.bas -x gfx-smoke
+              test "$(./gfx-smoke)" = "FreeBASIC-NG Debian graphics smoke"
               fbc --version | grep -F "Version '"${VERSION}"'"
             '
 
@@ -483,6 +505,9 @@ jobs:
               cd /tmp
               fbc smoke.bas -x smoke
               test "$(./smoke)" = "FreeBASIC-NG Debian upgrade smoke"
+              printf "#include once \"fbgfx.bi\"\nDim w As Integer, h As Integer, d As Integer\nScreenInfo w, h, d\nPrint \"FreeBASIC-NG Debian graphics smoke\"\n" > /tmp/gfx-smoke.bas
+              fbc -fbgfx gfx-smoke.bas -x gfx-smoke
+              test "$(./gfx-smoke)" = "FreeBASIC-NG Debian graphics smoke"
               fbc --version | grep -F "Version ${VERSION}"
             '
 
@@ -841,7 +866,8 @@ jobs:
             "$IMAGE" bash -euxo pipefail -c '
               sed -i "/^#DisableSandboxFilesystem/a DisableSandboxFilesystem\\nDisableSandboxSyscalls" /etc/pacman.conf
               pacman -Syu --noconfirm --needed \
-                base-devel ca-certificates cmake git gpm libffi libx11 ncurses ninja python
+                base-devel ca-certificates cmake git gpm libffi libx11 libxext \
+                libxpm libxrandr libxrender libglvnd ncurses ninja python
               useradd --create-home builder
 
               record_owned_files() {
@@ -856,6 +882,9 @@ jobs:
                 printf "Print \\\"FreeBASIC-NG AUR package smoke\\\"\\n" > smoke.bas
                 fbc smoke.bas -x smoke
                 test "$(./smoke)" = "FreeBASIC-NG AUR package smoke"
+                printf "#include once \"fbgfx.bi\"\nDim w As Integer, h As Integer, d As Integer\nScreenInfo w, h, d\nPrint \"FreeBASIC-NG AUR graphics smoke\"\n" > gfx-smoke.bas
+                fbc -fbgfx gfx-smoke.bas -x gfx-smoke
+                test "$(./gfx-smoke)" = "FreeBASIC-NG AUR graphics smoke"
                 fbc --version | grep -F "Version ${VERSION}"
               }
 

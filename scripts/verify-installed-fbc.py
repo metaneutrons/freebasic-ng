@@ -77,6 +77,20 @@ def main() -> int:
             f"staged libraries missing below {libdir}: {', '.join(missing_archives)}"
         )
 
+    if args.require_gfxlib:
+        platform_member = (
+            "gfx_cocoa" if args.expected_host.startswith("darwin-")
+            else "gfx_x11" if args.expected_host.startswith("linux-")
+            else "gfx_win32"
+        )
+        gfx_archives = sorted(name for name in expected_archives if name.startswith("libfbgfx"))
+        for name in gfx_archives:
+            members = run(["ar", "t", str(libdir / name)]).splitlines()
+            if len(members) < 10 or not any("gfx_screen." in member for member in members):
+                raise RuntimeError(f"{name} has no complete graphics object inventory")
+            if not any(platform_member in member for member in members):
+                raise RuntimeError(f"{name} omits the {platform_member} platform driver")
+
     with tempfile.TemporaryDirectory(prefix="freebasic-ng-smoke-") as temporary:
         workdir = Path(temporary)
         source = workdir / "smoke.bas"

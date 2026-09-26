@@ -32,6 +32,20 @@ FreeBASIC program from that installation. It then repeats that smoke test
 after extracting the archive. The seed chain and its rotation procedure are
 documented in [bootstrap.md](bootstrap.md).
 
+Graphics is part of the release gate, not an optional post-release package.
+Every host build and the Debian/AUR source builds enable `FB_BUILD_GFXLIB`.
+Before packaging, the workflow checks the staged `libfbgfx` archive variants,
+their object inventories and the platform driver, then compiles and runs
+non-GUI `-fbgfx` probes with standard/`-mt` and supported PIC combinations.
+The same checks run on extracted archives and after archive replacement.
+The archive itself is inspected for its exact runtime/graphics inventory.
+Both macOS host lanes additionally open native Cocoa windows from the staged
+compiler and extracted archive; a successful link alone is not window-runtime
+evidence. Debian, Homebrew and both AUR packages also compile and run a
+headless graphics-link probe after installation. A real keyboard, mouse and
+display check remains a manual release-qualification step; a hosted runner
+cannot establish user-interaction quality merely by linking a library.
+
 The workflow publishes a GitHub prerelease only after all six archives are
 present. Each archive has:
 
