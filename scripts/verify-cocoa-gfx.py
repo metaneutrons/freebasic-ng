@@ -47,20 +47,24 @@ def main() -> None:
 
     with tempfile.TemporaryDirectory(prefix="freebasic-ng-cocoa-") as temp:
         build = Path(temp)
-        probe = build / "cocoa-baseline-probe.o"
-        executable = build / "cocoa-baseline-smoke"
-        run([
-            "clang", "-arch", arch, "-fobjc-arc", "-c",
-            str(ROOT / "tests/gfx/cocoa-baseline-probe.m"), "-o", str(probe),
-        ], cwd=build)
-        run([
-            str(fbc), str(ROOT / "tests/gfx/cocoa-baseline-smoke.bas"),
-            str(probe), "-x", str(executable),
-        ], cwd=build)
         env = os.environ.copy()
         env.pop("DISPLAY", None)
         env["FBGFX"] = "Cocoa"
-        run([str(executable)], cwd=build, env=env)
+        for name in ("baseline", "input"):
+            probe = build / f"cocoa-{name}-probe.o"
+            source = ROOT / f"tests/gfx/cocoa-{name}-smoke.bas"
+            run([
+                "clang", "-arch", arch, "-fobjc-arc", "-c",
+                str(ROOT / f"tests/gfx/cocoa-{name}-probe.m"), "-o", str(probe),
+            ], cwd=build)
+            variants = [([], "")]
+            if name == "input":
+                variants.append((["-mt", "-d", "FB_COCOA_MT"], "-mt"))
+            for flags, suffix in variants:
+                executable = build / f"cocoa-{name}-smoke{suffix}"
+                run([str(fbc), *flags, str(source), str(probe),
+                     "-x", str(executable)], cwd=build)
+                run([str(executable)], cwd=build, env=env)
 
 
 if __name__ == "__main__":
