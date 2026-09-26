@@ -16,6 +16,8 @@
 	#define ENABLE_GORC
 #endif
 
+const FB_DARWIN_MIN_OS = "11.0"
+
 enum
 	PRINT_HOST
 	PRINT_TARGET
@@ -1394,7 +1396,7 @@ private function hLinkFiles( ) as integer
 	end select
 
 	if( fbGetOption( FB_COMPOPT_TARGET ) = FB_COMPTARGET_DARWIN ) then
-		ldcline += " -mmacosx-version-min=11.0"
+		ldcline += " -mmacosx-version-min=" + FB_DARWIN_MIN_OS
 	end if
 
 	'' This is required for 64-bit modules on *nix-y platforms
@@ -3784,6 +3786,12 @@ private function hCompileStage2Module( byval module as FBCIOFILE ptr ) as intege
 			ism64Target = True
 		end select
 
+		if( fbGetOption( FB_COMPOPT_TARGET ) = FB_COMPTARGET_DARWIN ) then
+			'' Clang embeds the deployment target in its generated Mach-O assembly.
+			'' Set it here, not only in the final linker invocation.
+			ln += "-mmacosx-version-min=" + FB_DARWIN_MIN_OS + " "
+		end if
+
 		if( fbGetOption( FB_COMPOPT_TARGET ) <> FB_COMPTARGET_JS ) then
 			'' GCC doesn't recognize the -march option and PowerPC combination
 			'' and recommendeds the -mcpu option be used for PowerPC.
@@ -4115,6 +4123,11 @@ private function hAssembleModule( byval module as FBCIOFILE ptr ) as integer
 			end if
 		end if
 	end select
+
+	if( fbGetOption( FB_COMPOPT_TARGET ) = FB_COMPTARGET_DARWIN ) then
+		'' Also cover assembly emitted directly by a non-C backend.
+		ln += "-mmacosx-version-min=" + FB_DARWIN_MIN_OS + " "
+	end if
 
 	ln += """" + hGetAsmName( module, 2 ) + """ "
 	ln += "-o """ + *module->objfile + """"
