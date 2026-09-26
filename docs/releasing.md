@@ -78,9 +78,11 @@ buildable. [`release-notes/next.md`](release-notes/next.md) collects those
 consequences as they arise. A change with such a consequence adds its note in
 the same pull request that introduces it.
 
-Before the draft release is made visible, merge that file into the release body
-and reset it to the template it carries at its end. The file is a working
-document between releases, not a published one, so an empty file is the normal
+Before the draft release is made visible, the release workflow appends the
+marked public sections to its existing Release Please body. A malformed marker
+pair stops staging. After the stable release, reset the file to the template it
+carries at its end in a follow-up change. The file is a working document
+between releases, not a published one, so an empty public block is the normal
 state right after a release.
 
 Merging the Release Please version PR is the explicit stable-release decision.

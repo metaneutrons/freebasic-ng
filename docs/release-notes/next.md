@@ -2,9 +2,11 @@
 
 Release Please generates the changelog from conventional commits. That record
 is accurate but it does not say what a change means for someone who already has
-the previous release installed. This file collects those consequences between
-releases. Whoever publishes the draft release merges this file into the release
-body and then resets the file to the template at the end.
+the previous release installed. The release workflow copies the marked public
+sections into the draft before it becomes visible. After a stable release,
+reset this file to the template at the end.
+
+<!-- freebasic-ng:public-release-notes:start -->
 
 ## Graphics libraries are included in the Tier 1 packages
 
@@ -60,6 +62,8 @@ still reads its locals through the wrong frame pointer. That defect is
 independent of this change and is tracked in
 [issue #159](https://github.com/metaneutrons/freebasic-ng/issues/159).
 
+<!-- freebasic-ng:public-release-notes:end -->
+
 ---
 
 Template for the next cycle:
@@ -69,9 +73,13 @@ Template for the next cycle:
 
 Release Please generates the changelog from conventional commits. That record
 is accurate but it does not say what a change means for someone who already has
-the previous release installed. This file collects those consequences between
-releases. Whoever publishes the draft release merges this file into the release
-body and then resets the file to the template at the end.
+the previous release installed. The release workflow copies the marked public
+sections into the draft before it becomes visible. After a stable release,
+reset this file to the template at the end.
+
+<!-- freebasic-ng:public-release-notes:start -->
 
 _No notes for the next release yet._
+
+<!-- freebasic-ng:public-release-notes:end -->
 ```

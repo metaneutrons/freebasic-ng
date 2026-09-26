@@ -215,6 +215,9 @@ jobs:
           test -f "$active/current-layout"
           test ! -e "$active/obsolete-layout"
 
+      - name: Verify release-note composition and rejection cases
+        run: python3 -m unittest discover -s tests/release -p 'test_*.py'
+
   darwin-aarch64-selfhost:
     name: Self-host Darwin ARM64
     runs-on: macos-15
