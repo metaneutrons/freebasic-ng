@@ -100,14 +100,18 @@ class FreebasicNg < Formula
     assert_match version.to_s, shell_output("#{bin}/fbc --version")
     source = testpath/"smoke.bas"
     output = testpath/"smoke"
-    source.write 'Print "FreeBASIC-NG package smoke"' + "\\n"
+    source.write <<~BASIC
+      Print "FreeBASIC-NG package smoke"
+    BASIC
     system bin/"fbc", source, "-x", output
     gfx_source = testpath/"gfx-smoke.bas"
     gfx_output = testpath/"gfx-smoke"
-    gfx_source.write '#include once "fbgfx.bi"' + "\\n" +
-      'Dim w As Integer, h As Integer, d As Integer' + "\\n" +
-      'ScreenInfo w, h, d' + "\\n" +
-      'Print "FreeBASIC-NG graphics smoke"' + "\\n"
+    gfx_source.write <<~BASIC
+      #include once "fbgfx.bi"
+      Dim w As Integer, h As Integer, d As Integer
+      ScreenInfo w, h, d
+      Print "FreeBASIC-NG graphics smoke"
+    BASIC
     system bin/"fbc", "-fbgfx", gfx_source, "-x", gfx_output
     assert_equal "FreeBASIC-NG graphics smoke\\n", shell_output(gfx_output)
     assert_equal "FreeBASIC-NG package smoke\\n", shell_output(output)
