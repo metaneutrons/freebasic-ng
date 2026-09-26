@@ -26,6 +26,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prefix", type=Path, required=True)
     parser.add_argument("--expected-host", required=True)
+    parser.add_argument(
+        "--require-gfxlib",
+        action="store_true",
+        help="require and link-test every graphics library variant supported by the host",
+    )
     args = parser.parse_args()
 
     version_match = re.search(
@@ -55,12 +60,37 @@ def main() -> int:
     if expected not in version:
         raise RuntimeError(f"expected '{expected}' in compiler version output:\n{version}")
 
+    libdir = args.prefix / "lib" / "freebasic" / args.expected_host
+    expected_archives = {"libfb.a", "libfbmt.a", "fbrt0.o"}
+    pic_supported = args.expected_host.startswith("linux-") and not args.expected_host.endswith("-x86")
+    if pic_supported:
+        expected_archives.update({"libfbpic.a", "libfbmtpic.a", "fbrt0pic.o"})
+    if args.require_gfxlib:
+        expected_archives.update({"libfbgfx.a", "libfbgfxmt.a"})
+        if pic_supported:
+            expected_archives.update({"libfbgfxpic.a", "libfbgfxmtpic.a"})
+    missing_archives = sorted(
+        archive for archive in expected_archives if not (libdir / archive).is_file()
+    )
+    if missing_archives:
+        raise FileNotFoundError(
+            f"staged libraries missing below {libdir}: {', '.join(missing_archives)}"
+        )
+
     with tempfile.TemporaryDirectory(prefix="freebasic-ng-smoke-") as temporary:
         workdir = Path(temporary)
         source = workdir / "smoke.bas"
         output_base = workdir / "smoke"
         source.write_text(
             'Print "FreeBASIC-NG smoke: "; __FB_VERSION__\n', encoding="utf-8"
+        )
+        gfx_source = workdir / "gfx-smoke.bas"
+        gfx_source.write_text(
+            '#include once "fbgfx.bi"\n'
+            'Dim screen_width As Integer, screen_height As Integer, screen_depth As Integer\n'
+            'ScreenInfo screen_width, screen_height, screen_depth\n'
+            'Print "FreeBASIC-NG smoke: "; __FB_VERSION__\n',
+            encoding="utf-8",
         )
         run([str(executable), "-v", str(source), "-x", str(output_base)], cwd=workdir)
         output = output_base if output_base.exists() else output_base.with_suffix(".exe")
@@ -70,6 +100,41 @@ def main() -> int:
         expected_output = f"FreeBASIC-NG smoke: {expected_version}"
         if result != expected_output:
             raise RuntimeError(f"unexpected smoke-program output: {result!r}")
+
+        # Each command selects a distinct default library suffix.  The gfx
+        # probe calls SCREENINFO to pull the archive, but never opens a window;
+        # this keeps archive/link validation independent of the platform driver.
+        variant_flags = [[], ["-mt"]]
+        if pic_supported:
+            variant_flags.extend([["-pic"], ["-mt", "-pic"]])
+        if args.require_gfxlib:
+            variant_flags.extend([flags + ["-fbgfx"] for flags in variant_flags])
+
+        for index, flags in enumerate(variant_flags):
+            variant_base = workdir / f"variant-{index}"
+            variant_source = gfx_source if "-fbgfx" in flags else source
+            run([
+                str(executable),
+                *flags,
+                str(variant_source),
+                "-x",
+                str(variant_base),
+            ], cwd=workdir)
+            variant_output = (
+                variant_base
+                if variant_base.exists()
+                else variant_base.with_suffix(".exe")
+            )
+            if not variant_output.is_file():
+                raise FileNotFoundError(
+                    f"compiler did not produce {variant_base} or {variant_base}.exe"
+                )
+            result = run([str(variant_output)], cwd=workdir).strip()
+            if result != expected_output:
+                raise RuntimeError(
+                    f"unexpected variant output for {' '.join(flags) or 'default'}: "
+                    f"{result!r}"
+                )
 
     print(f"verified staged compiler for {args.expected_host}")
     return 0

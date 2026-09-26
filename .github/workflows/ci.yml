@@ -81,7 +81,7 @@ jobs:
 
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libncurses-dev libffi-dev libx11-dev libxext-dev libxpm-dev libxrandr-dev libxrender-dev libgpm-dev
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libncurses-dev libffi-dev libx11-dev libxext-dev libxpm-dev libxrandr-dev libxrender-dev libgl-dev libgpm-dev
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
@@ -105,28 +105,28 @@ jobs:
       - name: Configure and build (Unix)
         if: matrix.family == 'unix'
         run: |
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DFB_BUILD_GFXLIB=OFF
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DFB_BUILD_GFXLIB=ON
           cmake --build build
 
       - name: Configure and build (Windows)
         if: matrix.family == 'windows'
         shell: msys2 {0}
         run: |
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DFB_BUILD_GFXLIB=OFF
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DFB_BUILD_GFXLIB=ON
           cmake --build build
 
       - name: Test staged installation (Unix)
         if: matrix.family == 'unix'
         run: |
           cmake --install build --prefix stage
-          python3 scripts/verify-installed-fbc.py --prefix stage --expected-host "${{ matrix.expected_host }}"
+          python3 scripts/verify-installed-fbc.py --prefix stage --expected-host "${{ matrix.expected_host }}" --require-gfxlib
 
       - name: Test staged installation (Windows)
         if: matrix.family == 'windows'
         shell: msys2 {0}
         run: |
           cmake --install build --prefix stage
-          python scripts/verify-installed-fbc.py --prefix stage --expected-host "${{ matrix.expected_host }}"
+          python scripts/verify-installed-fbc.py --prefix stage --expected-host "${{ matrix.expected_host }}" --require-gfxlib
 
       # The former Travis matrix is Linux-specific.  M7 additionally requires
       # the complete historical unit suite through a native self-host on every
