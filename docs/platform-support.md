@@ -62,7 +62,13 @@ The hosted macOS smoke test injects synthetic AppKit input and verifies
 window/event translation for both standard and `-mt` graphics builds. Manual
 qualification still needs a real keyboard, mouse, Retina/non-Retina display,
 and both macOS architectures to check focus transitions, IME limitations,
-cursor behaviour and display scaling.
+cursor behaviour and display scaling. Build
+`tests/gfx/cocoa-interactive.bas` with the staged `fbc` and run it once normally
+and once each with `fullscreen`, `borderless` and `floating`. Check that the
+four corner markers stay in the correct places, typed text matches the active
+keyboard layout within CP437, mouse coordinates start at the upper-left,
+button/wheel/focus/close events arrive, and C/P/T toggle cursor visibility,
+window position and title. Escape exits a borderless/fullscreen probe.
 
 Mach-O differs from ELF in two ways that are visible in what `fbc` produces on
 macOS, so they are part of the platform contract rather than a property of one
