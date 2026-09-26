@@ -28,6 +28,42 @@ the platform C toolchain at use time; it does not bundle a C toolchain.
 
 ## macOS output conventions
 
+Native macOS graphics uses an AppKit window and a CoreGraphics framebuffer
+presentation path. `SCREENRES` dimensions and mouse coordinates are logical
+window points: the origin is the upper-left corner, and increasing Y moves
+down. AppKit handles Retina backing pixels; FreeBASIC does not double its
+framebuffer dimensions when `backingScaleFactor` is 2. In fullscreen mode the
+logical framebuffer is scaled to the main display's point-sized frame. This is
+borderless desktop fullscreen, not an exclusive display-mode switch or a
+separate macOS Space. `GFX_NO_FRAME` creates a borderless key-capable window;
+`GFX_ALWAYS_ON_TOP` uses the floating window level.
+
+Keyboard `SC_*` values represent physical key positions; event `ascii` and
+`INKEY$` use the layout-dependent text converted to FreeBASIC's CP437 code
+page. Characters outside CP437 are not emitted as text. The backend does not
+provide an IME composition interface. Mouse movement, button, wheel, focus
+and close requests are posted to `ScreenEvent`. `ScreenEvent` also pumps the
+AppKit queue on the main thread, so an event-only loop does not need drawing
+calls to receive input. `GETMOUSE` reports logical coordinates and the current
+button/wheel state. Positive `SETMOUSE` clipping, OpenGL and shaped windows
+return an illegal-function-call error rather than claiming unsupported
+behaviour worked.
+
+AppKit creation, polling, presentation and teardown run on the process main
+thread. A `-mt` worker can draw into the shared framebuffer, but its
+`SCREENRES`/`SCREEN 0` mode change is rejected before the current screen is
+destroyed. Worker requests to change title, window position or mouse cursor
+are queued for the main thread; they become visible when its run loop is
+pumped. A worker must not wait for a queued window change while holding up
+the main thread. Graphics output drawn by a worker appears at the next
+main-thread presentation/poll operation.
+
+The hosted macOS smoke test injects synthetic AppKit input and verifies
+window/event translation for both standard and `-mt` graphics builds. Manual
+qualification still needs a real keyboard, mouse, Retina/non-Retina display,
+and both macOS architectures to check focus transitions, IME limitations,
+cursor behaviour and display scaling.
+
 Mach-O differs from ELF in two ways that are visible in what `fbc` produces on
 macOS, so they are part of the platform contract rather than a property of one
 release.
