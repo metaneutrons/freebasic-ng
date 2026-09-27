@@ -1198,7 +1198,18 @@ sub fbAddLib(byval libname as zstring ptr)
 		exit sub
 	end if
 
-	strsetAdd(@env.libs, *libname, FALSE)
+	'' A name ending in ".dll" (e.g. Lib "user32.dll") would make the
+	'' linker search for "libuser32.dll.a"/"user32.dll.dll" and fail.
+	'' Strip the extension so the linker can find the import library
+	'' "libuser32.a" (or the DLL itself) instead.
+	dim as string lname = *libname
+	if( len( lname ) > 4 ) then
+		if( lcase( right( lname, 4 ) ) = ".dll" ) then
+			lname = left( lname, len( lname ) - 4 )
+		end if
+	end if
+
+	strsetAdd(@env.libs, lname, FALSE)
 end sub
 
 sub fbAddLibPath(byval path as zstring ptr)

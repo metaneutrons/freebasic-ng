@@ -9,7 +9,7 @@ FBCALL int fb_FileExists
 {
 	FILE *fp;
 	
-	fp = fopen(filename, "r");
+	fp = fb_hFOpen(filename, "r");
 	if (fp) 
 	{
 		fclose(fp);

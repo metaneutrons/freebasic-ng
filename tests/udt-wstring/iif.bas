@@ -35,75 +35,75 @@ SUITE( fbc_tests.udt_wstring_.iif_ )
 			end scope
 
 			'' WSTRING = iif( expr, LITERAL1, WSTRING2 )
-			scope
-				dim a as wstring * 50 = iif( expr, true_expr, t2 )
-				if( expr ) then
+			Scope
+				Dim a As WString * 50 = IIf( expr, true_expr, t2 )
+				If( expr ) Then
 					CU_ASSERT_WSTRING_EQUAL( a, t1 )
-				else
+				Else
 					CU_ASSERT_WSTRING_EQUAL( a, t2 )
-				endif
-			end scope
+				EndIf
+			End Scope
 
 			'' WSTRING = iif( expr, WSTRING1, WSTRING2 )
-			scope
-				dim a as wstring * 50 = iif( expr, t1, t2 )
-				if( expr ) then
+			Scope
+				Dim a As WString * 50 = IIf( expr, t1, t2 )
+				If( expr ) Then
 					CU_ASSERT_WSTRING_EQUAL( a, t1 )
-				else
+				Else
 					CU_ASSERT_WSTRING_EQUAL( a, t2 )
-				endif
-			end scope
+				EndIf
+			End Scope
 
 			'' WSTRING = iif( expr, USTRING1, LITERAL2 )
-			scope
-				dim a as wstring * 50 = iif( expr, u1, false_expr )
-				if( expr ) then
+			Scope
+				Dim a As WString * 50 = IIf( expr, u1, false_expr )
+				If( expr ) Then
 					CU_ASSERT_WSTRING_EQUAL( a, t1 )
-				else
+				Else
 					CU_ASSERT_WSTRING_EQUAL( a, t2 )
-				endif
-			end scope
+				EndIf
+			End Scope
 
 			'' WSTRING = iif( expr, LITERAL1, USTRING2 )
-			scope
-				dim a as wstring * 50 = iif( expr, true_expr, u2 )
-				if( expr ) then
+			Scope
+				Dim a As WString * 50 = IIf( expr, true_expr, u2 )
+				If( expr ) Then
 					CU_ASSERT_WSTRING_EQUAL( a, t1 )
-				else
+				Else
 					CU_ASSERT_WSTRING_EQUAL( a, t2 )
-				endif
-			end scope
+				EndIf
+			End Scope
 
 			'' WSTRING = iif( expr, USTRING1, USTRING2 )
-			scope
-				dim a as wstring * 50 = iif( expr, u1, u2 )
-				if( expr ) then
+			Scope
+				Dim a As WString * 50 = IIf( expr, u1, u2 )
+				If( expr ) Then
 					CU_ASSERT_WSTRING_EQUAL( a, t1 )
-				else
+				Else
 					CU_ASSERT_WSTRING_EQUAL( a, t2 )
-				endif
-			end scope
-		end scope
+				EndIf
+			End Scope
+		End Scope
 	#endmacro
 
 	#macro check_ustring( expr, true_expr, false_expr )
-		scope
-			dim t1 as wstring * 50 = true_expr
-			dim t2 as wstring * 50 = false_expr
+		Scope
+			Dim t1 As WString * 50 = true_expr
+			Dim t2 As WString * 50 = false_expr
 
-			dim u1 as ustring = true_expr
-			dim u2 as ustring = false_expr
+			Dim u1 As ustring = true_expr
+			Dim u2 As ustring = false_expr
 
 			'' USTRING = iif( expr, LITERAL1, LITERAL2 )
-			scope
-				dim a as ustring = iif( expr, true_expr, false_expr )
-				dim r as wstring * 50 = a
-				if( expr ) then
+			Scope
+				Dim a As ustring = IIf( expr, true_expr, false_expr )
+				Dim r As WString * 50 = a
+				If( expr ) Then
 					CU_ASSERT_WSTRING_EQUAL( r, t1 )
-				else
+				Else
 					CU_ASSERT_WSTRING_EQUAL( r, t2 )
-				endif
-			end scope
+				EndIf
+			End Scope
 
 			'' USTRING = iif( expr, WSTRING1, LITERAL2 )
 			scope

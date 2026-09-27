@@ -2,6 +2,10 @@
 
 #include "fb.h"
 
+#if defined HOST_WIN32
+	#include <windows.h>
+#endif
+
 /* dst_chars == room in dst buffer without null terminator. Thus, the dst buffer
    must be at least dst_chars+1 bytes.
    src must be null-terminated.
@@ -21,25 +25,30 @@ ssize_t fb_wstr_ConvToA(char *dst, ssize_t dst_chars, const FB_WCHAR *src)
 	memcpy(dst, src, chars + 1);
 	return chars;
 #else
-	/* plus the null-term */
-	ssize_t chars = wcstombs(dst, src, dst_chars + 1);
-
-	/* worked? */
-	if (chars >= 0) {
-		/* a null terminator won't be added if there was not
-		   enough space, so do it manually (this will cut off the last
-		   char, but what can you do) */
-		if (chars == (dst_chars + 1)) {
-			dst[dst_chars] = '\0';
-			return dst_chars - 1;
-		}
-		return chars;
-	}
-
-	/* wcstombs() failed; translate at least ASCII chars
-	   and write out '?' for the others */
 	char *origdst = dst;
 	char *dstlimit = dst + dst_chars;
+
+#if defined HOST_WIN32
+	/* Windows: convert to UTF-8.  This is the encoding fbc uses internally
+	   for all paths (they come from the wide command line and from #cmdline
+	   options in UTF-8 source files), so WSTRING -> STRING conversions of
+	   filenames produce names the FB runtime's Unicode-aware file functions
+	   can open.  The ANSI codepage cannot represent most non-ASCII
+	   filenames at all (they would be mangled into '?'), and wcstombs()
+	   depends on the CRT locale, which defaults to "C" and mangles every
+	   non-ASCII unit into '?'. */
+	int wbytes = WideCharToMultiByte( CP_UTF8, 0, src, -1, dst,
+	                                  (int)dst_chars + 1, NULL, NULL );
+	if( wbytes > 0 ) {
+		/* WideCharToMultiByte() counted the null terminator */
+		return (ssize_t)wbytes - 1;
+	}
+	/* conversion failed (insufficient room or best-fit loss); fall
+	   through to the ASCII + '?' translation below */
+#endif
+
+	/* translate at least ASCII chars and write out '?' for the others
+	   (also the truncation path, like wcstombs() does) */
 	while (dst < dstlimit) {
 #if defined HOST_WIN32
 		UTF_16 c = *src++;
@@ -57,7 +66,7 @@ ssize_t fb_wstr_ConvToA(char *dst, ssize_t dst_chars, const FB_WCHAR *src)
 		if (c > 127)
 			c = '?';
 #endif
-		*dst++ = c;
+		*dst++ = (char)c;
 	}
 	*dst = '\0';
 	return dst - origdst;
@@ -76,6 +85,14 @@ FBCALL FBSTRING *fb_WstrToStr( const FB_WCHAR *src )
     /* on DOS, wcstombs() simply calls memcpy() and won't compute
        length  see fb_unicode.h */
     chars = fb_wstr_Len( src );
+#elif defined HOST_WIN32
+    /* measure in UTF-8, the encoding fb_wstr_ConvToA() writes (wcstombs()
+       would measure in the CRT locale's codepage instead, which can differ) */
+    chars = WideCharToMultiByte( CP_UTF8, 0, src, -1, NULL, 0, NULL, NULL );
+    if( chars > 0 )
+        chars -= 1; /* don't count the null terminator */
+    if( chars < 0 )
+        chars = 0;
 #else
     chars = wcstombs( NULL, src, 0 );
 #endif

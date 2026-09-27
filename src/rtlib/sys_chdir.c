@@ -11,11 +11,7 @@ FBCALL int fb_ChDir( FBSTRING *path )
 {
 	int res;
 
-#ifdef HOST_MINGW
-	res = _chdir( path->data );
-#else
-	res = chdir( path->data );
-#endif
+	res = fb_hFChDir( path->data );
 
 	/* del if temp */
 	fb_hStrDelTemp( path );

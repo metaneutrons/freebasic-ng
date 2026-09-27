@@ -123,6 +123,37 @@
 	#include "xbox/fb_xbox.h"
 #endif
 
+/* Portable, Unicode-aware filesystem accessors.
+
+   On Windows the CRT would mangle every non-ASCII filename into '?'s, which
+   is not a legal filename character, so the Win32 implementations convert the
+   filenames to UTF-16 and use the wide API (see fb_win32_filename.c).  On
+   other hosts the plain CRT functions are used.
+
+   Note: paths must be UTF-8 (or pure ASCII) on Windows -- that is the
+   encoding fbc uses internally for all paths, since the compiler derives them
+   from the wide command line and from #cmdline options in UTF-8 sources. */
+#ifdef HOST_WIN32
+	size_t fb_hFilenameToWide       ( const char *filename, wchar_t *dst, size_t dstchars );
+	size_t fb_hWideFilenameToUtf8   ( const wchar_t *filename, char *dst, size_t dstbytes );
+	int    fb_hIsValidUtf8Name      ( const char *s );
+	int    fb_hIsValidUtf8NameN     ( const char *s, size_t bytes );
+	unsigned int fb_hGetNarrowCodepage( const char *s );
+	FILE  *fb_hFOpen                ( const char *filename, const char *mode );
+	FILE  *fb_hFReopen              ( const char *filename, const char *mode, FILE *stream );
+	int    fb_hFRemove              ( const char *filename );
+	int    fb_hFChDir               ( const char *path );
+	int    fb_hFMkDir               ( const char *path );
+	int    fb_hFCopyFile            ( const char *source, const char *destination );
+#else
+	#define fb_hFOpen( f, m )       fopen( f, m )
+	#define fb_hFReopen( f, m, s )  freopen( f, m, s )
+	#define fb_hFRemove( f )        remove( f )
+	#define fb_hFChDir( p )         chdir( p )
+	#define fb_hFMkDir( p )         mkdir( p, 0777 )
+	#define fb_hFCopyFile( s, d )   fb_CrtFileCopy( s, d )
+#endif
+
 #if defined HOST_SOLARIS
 	#undef alloca
 	#define alloca(x) __builtin_alloca(x)

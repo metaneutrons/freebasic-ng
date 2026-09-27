@@ -12,6 +12,11 @@
 
 #include once "file.bi"
 
+#ifdef __FB_WIN32__
+	'' CommandLineToArgvW() (used to read the UTF-16 command line)
+	#inclib "shell32"
+#endif
+
 #if defined( ENABLE_STANDALONE ) and defined( __FB_WIN32__ )
 	#define ENABLE_GORC
 #endif
@@ -232,6 +237,25 @@ private sub fbcInit( )
 
 	fbc.print = -1
 end sub
+
+#ifdef __FB_WIN32__
+	declare function GetCommandLineW lib "kernel32" alias "GetCommandLineW" ( ) as wstring ptr
+	declare function CommandLineToArgvW lib "shell32" alias "CommandLineToArgvW" ( byval lpCmdLine as wstring ptr, byval pNumArgs as long ptr ) as wstring ptr ptr
+	declare function WideCharToMultiByte lib "kernel32" alias "WideCharToMultiByte" ( byval CodePage as ulong, byval dwFlags as ulong, byval lpWideCharStr as wstring ptr, byval cchWideChar as long, byval lpMultiByteStr as any ptr, byval cbMultiByte as long, byval lpDefaultChar as zstring ptr, byval lpUsedDefaultChar as long ptr ) as long
+	declare function LocalFree lib "kernel32" alias "LocalFree" ( byval hMem as any ptr ) as any ptr
+
+	const CP_UTF8_API = 65001
+#endif
+
+'':::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+'' NOTE: the ASCII staging of output names for the backend tools (gcc/as/ld/
+'' dlltool/GoRC/windres cannot handle non-ASCII file names on Windows) was
+'' removed on 2026-09-25; it will be handled in the toolchain instead.
+'' The compiler still reads the wide command line and converts it to UTF-8
+'' (see hGetUtf8Argv() below), so non-ASCII source file names are read
+'' correctly; producing output files with non-ASCII names requires a
+'' toolchain that supports them.
+'':::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 private sub hSetOutName( )
 	'' Determine the output binary/archive's name if not given via -x
@@ -1338,7 +1362,18 @@ private function hLinkFiles( ) as integer
 				if( coff_linker and (i->s = "gcc") ) then
 					ldcline += " """ + coff_runtime + """"
 				else
-					ldcline += " -l" + i->s
+					'' Lib names ending in ".dll" (also given via -l on the
+					'' cmd line) can't be resolved by the linker ("-lfoo.dll"
+					'' searches for "libfoo.dll.a"/"foo.dll.dll" only), so
+					'' strip the extension and let it find the import
+					'' library "libfoo.a" or the DLL itself.
+					dim as string libname = i->s
+					if( len( libname ) > 4 ) then
+						if( lcase( right( libname, 4 ) ) = ".dll" ) then
+							libname = left( libname, len( libname ) - 4 )
+						end if
+					end if
+					ldcline += " -l" + libname
 				end if
 			end if
 			i = listGetNext(i)
@@ -1698,6 +1733,8 @@ private sub hSetIofile _
 		module->is_custom_objfile = TRUE
 	end if
 
+	'' The .o name (and the .c/.asm names derived from it) is handed to the
+	'' backend tools
 	module->objfile = fbcAddObj( fbc.objfile )
 	fbc.objfile = ""
 
@@ -3036,6 +3073,53 @@ private function hTargetNeedsPIC( ) as integer
 	end if
 end function
 
+#ifdef __FB_WIN32__
+'' The CRT's argv is ANSI-encoded, which destroys every character that isn't
+'' representable in the active codepage (e.g. a Chinese filename on a system
+'' whose ANSI codepage is Western).  Re-read the command line as UTF-16 and
+'' convert it to UTF-8, the encoding used for all paths inside fbc (matching
+'' the UTF-8 encoding of #cmdline paths embedded in source files).
+'' Returns FALSE if the wide command line could not be obtained; the caller
+'' then falls back to the CRT argv.
+private function hGetUtf8Argv( byref argc as integer, byref argv as zstring ptr ptr ) as integer
+	dim as long wargc = any
+	dim as wstring ptr ptr wideargv = any
+	dim as zstring ptr ptr utf8argv = any
+	dim as integer i = any
+	dim as long need = any
+
+	function = FALSE
+
+	wideargv = CommandLineToArgvW( GetCommandLineW( ), @wargc )
+	if( wideargv = NULL ) then
+		exit function
+	end if
+
+	utf8argv = callocate( sizeof( zstring ptr ) * wargc )
+	if( utf8argv = NULL ) then
+		LocalFree( wideargv )
+		exit function
+	end if
+
+	for i = 0 to wargc - 1
+		need = WideCharToMultiByte( CP_UTF8_API, 0, wideargv[i], -1, NULL, 0, NULL, NULL )
+		if( need <= 0 ) then
+			need = 1
+		end if
+		utf8argv[i] = callocate( need )
+		if( utf8argv[i] <> NULL ) then
+			WideCharToMultiByte( CP_UTF8_API, 0, wideargv[i], -1, utf8argv[i], need, NULL, NULL )
+		end if
+	next
+
+	LocalFree( wideargv )
+
+	argc = wargc
+	argv = utf8argv
+	function = TRUE
+end function
+#endif
+
 private sub hParseArgs( byval argc as integer, byval argv as zstring ptr ptr )
 	fbc.optid = -1
 
@@ -3920,6 +4004,8 @@ private function hCompileStage2Module( byval module as FBCIOFILE ptr ) as intege
 		'' See ir-hlc.bas:hEmitType()
 		ln += "-Wno-format "
 
+		'' GCC supports extended identifiers, allowing the use of UTF-8 identifiers in .c files
+		ln += "-fextended-identifiers "
 		if( fbGetOption( FB_COMPOPT_DEBUGINFO ) ) then
 			ln += "-g "
 		end if
@@ -4782,7 +4868,7 @@ private sub hPrintVersion( byval verbose as integer )
 
 	print "FreeBASIC Compiler - Version " + FB_VERSION + _
 		" (" + FB_BUILD_DATE_ISO + "), built for " + fbGetHostId( ) + " (" & fbGetHostBits( ) & "bit)"
-	print "Copyright (C) 2004-2025 The FreeBASIC development team."
+	print "Copyright (C) 2004-2026 The FreeBASIC development team. Compiled by VisualFBEditor team. Includes GCC 16.1.0 and GDB 17.1."
 
 	#ifdef ENABLE_STANDALONE
 		hAppendConfigInfo( config, "standalone" )
@@ -4809,12 +4895,36 @@ end sub
 
 	fbcInit( )
 
+#ifdef __FB_WIN32__
+	declare function SetConsoleOutputCP lib "kernel32" alias "SetConsoleOutputCP" (byval wcodepage as ulong) as long
+	SetConsoleOutputCP( 65001 )
+
+	'' The CRT's argv is ANSI-encoded and would destroy non-ASCII
+	'' filenames - re-read the command line as UTF-16 and convert it to
+	'' UTF-8 (the encoding used for all paths inside fbc)
+	dim as integer argc = any
+	dim as zstring ptr ptr argv = any
+	if( hGetUtf8Argv( argc, argv ) ) then
+		if( argc = 1 ) then
+			hPrintOptions( FALSE )
+			fbcEnd( 1 )
+		end if
+		hParseArgs( argc, argv )
+	else
+		if( __FB_ARGC__ = 1 ) then
+			hPrintOptions( FALSE )
+			fbcEnd( 1 )
+		end if
+		hParseArgs( __FB_ARGC__, __FB_ARGV__ )
+	end if
+#else
 	if( __FB_ARGC__ = 1 ) then
 		hPrintOptions( FALSE )
 		fbcEnd( 1 )
 	end if
 
 	hParseArgs( __FB_ARGC__, __FB_ARGV__ )
+#endif
 
 	hCheckArgs( )
 

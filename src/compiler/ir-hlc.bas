@@ -259,6 +259,7 @@ dim shared as const zstring ptr dtypeName(0 to FB_DATATYPES-1) = _
 	@"double"   , _ '' double
 	@"FBSTRING" , _ '' string
 	NULL        , _ '' fix-len string
+	@"FBWSTRING", _ '' native var-len wstring
 	@"__builtin_va_list"  , _ '' va_list
 	NULL        , _ '' struct
 	NULL        , _ '' namespace
@@ -1374,8 +1375,10 @@ private function _emitBegin( ) as integer
 	hWriteLine( "typedef unsigned long long uint64;", TRUE )
 	if( fbIs64bit( ) ) then
 		hWriteLine( "typedef struct { char *data; int64 len; int64 size; } FBSTRING;", TRUE )
+		hWriteLine( "typedef struct { " + *dtypeName(typeGetRemapType(FB_DATATYPE_WCHAR)) + " *data; int64 len; int64 size; } FBWSTRING;", TRUE )
 	else
 		hWriteLine( "typedef struct { char *data; int32 len; int32 size; } FBSTRING;", TRUE )
+		hWriteLine( "typedef struct { " + *dtypeName(typeGetRemapType(FB_DATATYPE_WCHAR)) + " *data; int32 len; int32 size; } FBWSTRING;", TRUE )
 	end if
 	hWriteLine( "typedef int8 boolean;", TRUE )
 
@@ -1529,7 +1532,10 @@ private sub _scopeEnd( byval s as FBSYMBOL ptr )
 end sub
 
 private function hIsStaticWithDtor( byval sym as FBSYMBOL ptr ) as integer
-	function = symbIsStatic( sym ) and (not symbIsRef( sym )) and symbHasDtor( sym )
+	'' The C backend must hoist local statics whose cleanup wrapper references
+	'' them. Native counted WSTRING has an RTL dtor rather than a UDT dtor.
+	function = symbIsStatic( sym ) and (not symbIsRef( sym )) and _
+	           (symbHasDtor( sym ) or (symbGetType( sym ) = FB_DATATYPE_WSTRING))
 end function
 
 private sub _procAllocStaticVars( byval sym as FBSYMBOL ptr )

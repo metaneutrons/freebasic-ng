@@ -8,7 +8,10 @@ FBCALL double fb_FileDateTime( const char *filename )
 {
 #ifdef HOST_MINGW
 	struct _stat buf;
-	if( _stat( filename, &buf ) != 0 )
+	wchar_t wname[4096];
+	if( fb_hFilenameToWide( filename, wname, sizeof( wname ) / sizeof( wname[0] ) ) == 0 )
+		return 0.0;
+	if( _wstat( wname, &buf ) != 0 )
 #else
 	struct stat buf;
 	if( stat( filename, &buf ) != 0 )

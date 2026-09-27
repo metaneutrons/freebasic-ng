@@ -127,8 +127,13 @@ sub astDataStmtEnd( byval tree as ASTNODE ptr )
 			expr = astNewADDROF( expr )
 
 		case FB_DATASTMT_ID_WSTR
-			id = FB_DATASTMT_ID_WSTR + _
-			     (symbGetWstrLength( astGetStrLitSymbol( expr ) ) )
+			'' DATA descriptors need the logical unescaped WCHAR count.
+			'' symbGetWstrLength() measures escaped compiler literal storage and
+			'' is not valid for native counted WSTRING (notably \u escapes and
+			'' embedded NUL).  Preserve the exact span in the descriptor.
+			dim as integer wtextlen
+			hUnescapeW( symbGetVarLitTextW( astGetStrLitSymbol( expr ) ), wtextlen )
+			id = FB_DATASTMT_ID_WSTR + wtextlen
 			expr = astNewADDROF( expr )
 
 		case FB_DATASTMT_ID_CONST

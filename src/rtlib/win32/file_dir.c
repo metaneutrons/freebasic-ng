@@ -6,25 +6,20 @@
 #endif
 #include <windows.h>
 
+/* Room for one returned filename, converted to UTF-8 */
+#define FB_DIR_NAME_CHARS 1024
+
 typedef struct {
 	int in_use;
 	int attrib;
-#ifdef HOST_CYGWIN
-	WIN32_FIND_DATA data;
+	WIN32_FIND_DATAW data;
 	HANDLE handle;
-#else
-	struct _finddata_t data;
-	intptr_t handle;
-#endif
+	char name[FB_DIR_NAME_CHARS]; /* last found filename, as UTF-8 */
 } FB_DIRCTX;
 
 static void close_dir_internal ( FB_DIRCTX *ctx )
 {
-#ifdef HOST_MINGW
-	_findclose( ctx->handle );
-#else
 	FindClose( ctx->handle );
-#endif
 	ctx->in_use = FALSE;
 }
 
@@ -41,38 +36,34 @@ static void close_dir ( void )
 	close_dir_internal( ctx );
 }
 
+/* Copy the wide filename from the find data into the context's UTF-8 buffer.
+   Returns NULL if the conversion failed. */
+static char *hGetName( FB_DIRCTX *ctx )
+{
+	if( fb_hWideFilenameToUtf8( ctx->data.cFileName, ctx->name,
+	                            sizeof( ctx->name ) ) == 0 )
+		return NULL;
+
+	return ctx->name;
+}
+
 static char *find_next ( int *attrib )
 {
 	char *name = NULL;
 	FB_DIRCTX *ctx = FB_TLSGETCTX( DIR );
 
-#ifdef HOST_MINGW
 	do
 	{
-		if( _findnext( ctx->handle, &ctx->data ) )
-		{
+		if( !FindNextFileW( ctx->handle, &ctx->data ) ) {
 			close_dir( );
 			name = NULL;
 			break;
 		}
-        name = ctx->data.name;
+		name = hGetName( ctx );
 	}
-	while( ctx->data.attrib & ~ctx->attrib );
+	while( ctx->data.dwFileAttributes & ~ctx->attrib );
 
-	*attrib = ctx->data.attrib & ~0xFFFFFF00;
-
-#else
-    do {
-        if( !FindNextFile( ctx->handle, &ctx->data ) ) {
-            close_dir();
-            name = NULL;
-            break;
-        }
-        name = ctx->data.cFileName;
-    } while( ctx->data.dwFileAttributes & ~ctx->attrib );
-
-    *attrib = ctx->data.dwFileAttributes & ~0xFFFFFF00;
-#endif
+	*attrib = ctx->data.dwFileAttributes & ~0xFFFFFF00;
 
 	return name;
 }
@@ -85,6 +76,7 @@ FBCALL FBSTRING *fb_Dir( FBSTRING *filespec, int attrib, int *out_attrib )
 	int tmp_attrib;
     char *name;
     int handle_ok;
+	WCHAR wspec[FB_DIR_NAME_CHARS];
 
 	if( out_attrib == NULL )
 		out_attrib = &tmp_attrib;
@@ -100,13 +92,12 @@ FBCALL FBSTRING *fb_Dir( FBSTRING *filespec, int attrib, int *out_attrib )
 		if( ctx->in_use )
 			close_dir( );
 
-#ifdef HOST_MINGW
-        ctx->handle = _findfirst( filespec->data, &ctx->data );
-        handle_ok = ctx->handle != -1;
-#else
-        ctx->handle = FindFirstFile( filespec->data, &ctx->data );
-        handle_ok = ctx->handle != INVALID_HANDLE_VALUE;
-#endif
+		if( fb_hFilenameToWide( filespec->data, wspec, sizeof( wspec ) / sizeof( wspec[0] ) ) == 0 ) {
+			handle_ok = FALSE;
+		} else {
+			ctx->handle = FindFirstFileW( wspec, &ctx->data );
+			handle_ok = ctx->handle != INVALID_HANDLE_VALUE;
+		}
 		if( handle_ok )
 		{
 			/* Handle any other possible bits different Windows versions could return */
@@ -116,23 +107,13 @@ FBCALL FBSTRING *fb_Dir( FBSTRING *filespec, int attrib, int *out_attrib )
 			if( (attrib & 0x10) == 0 )
 				ctx->attrib |= 0x20;
 
-#ifdef HOST_MINGW
-			if( ctx->data.attrib & ~ctx->attrib )
-				name = find_next( out_attrib );
-			else
-			{
-                name = ctx->data.name;
-				*out_attrib = ctx->data.attrib & ~0xFFFFFF00;
-            }
-#else
 			if( ctx->data.dwFileAttributes & ~ctx->attrib )
 				name = find_next( out_attrib );
 			else
 			{
-                name = ctx->data.cFileName;
-                *out_attrib = ctx->data.dwFileAttributes & ~0xFFFFFF00;
+				name = hGetName( ctx );
+				*out_attrib = ctx->data.dwFileAttributes & ~0xFFFFFF00;
             }
-#endif
 			if( name )
 				ctx->in_use = TRUE;
 		}
