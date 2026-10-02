@@ -142,7 +142,7 @@ jobs:
 
       - name: Set up MSYS2
         if: matrix.family == 'windows'
-        uses: msys2/setup-msys2@66cd2cce69caa17b53920067426061ca1de3a884 # v2.32.0
+        uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2.33.0
         with:
           msystem: ${{ matrix.msystem }}
           update: true
@@ -718,7 +718,7 @@ jobs:
           name: release-candidate
           path: candidate
 
-      - uses: Homebrew/actions/setup-homebrew@1e34f2e2acaa766b7efacb8c26352e6abbb023f9 # 2026.09.13.1
+      - uses: Homebrew/actions/setup-homebrew@e99025eb970cfa124b8284a35463d87426917478 # 2026.09.28.1
         with:
           core: false
           cask: false
