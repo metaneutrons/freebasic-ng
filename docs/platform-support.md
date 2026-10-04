@@ -59,10 +59,16 @@ the main thread. Graphics output drawn by a worker appears at the next
 main-thread presentation/poll operation.
 
 The hosted macOS smoke test injects synthetic AppKit input and verifies
-window/event translation for both standard and `-mt` graphics builds. Manual
-qualification still needs a real keyboard, mouse, Retina/non-Retina display,
-and both macOS architectures to check focus transitions, IME limitations,
-cursor behaviour and display scaling. Build
+window/event translation for both standard and `-mt` graphics builds on both
+macOS architectures. Focus transitions, IME limitations, cursor behaviour and
+display scaling need a manual check with a real keyboard, mouse and Retina and
+non-Retina displays. A release requires that check on Apple silicon. For
+1.25.0, the first stable release with the Cocoa driver, the manual check on a
+physical Intel Mac is deferred to
+[issue #182](https://github.com/metaneutrons/freebasic-ng/issues/182); for that
+architecture the hosted `darwin-x86_64` build, archive and link checks and the
+automated Cocoa smoke test remain mandatory. A run under Rosetta or on a hosted
+runner is not evidence for physical Intel hardware. Build
 `tests/gfx/cocoa-interactive.bas` with the staged `fbc` and run it once normally
 and once each with `fullscreen`, `borderless` and `floating`. Check that the
 four corner markers stay in the correct places, typed text matches the active
