@@ -64,11 +64,16 @@ qualification still needs a real keyboard, mouse, Retina/non-Retina display,
 and both macOS architectures to check focus transitions, IME limitations,
 cursor behaviour and display scaling. Build
 `tests/gfx/cocoa-interactive.bas` with the staged `fbc` and run it once normally
-and once each with `fullscreen`, `borderless` and `floating`. Check that the
-four corner markers stay in the correct places, typed text matches the active
-keyboard layout within CP437, mouse coordinates start at the upper-left,
-button/wheel/focus/close events arrive, and C/P/T toggle cursor visibility,
-window position and title. Escape exits a borderless/fullscreen probe.
+and once each with `fullscreen`, `borderless` and `floating`, from a terminal.
+Each event type has its own row with a running count, so a burst of mouse
+movement cannot hide a key, button or focus event. Check that the four corner
+markers stay in the correct places, the text row matches the active keyboard
+layout within CP437, mouse coordinates start at the upper-left and agree with
+the polled `GETMOUSE` row, button, double-click, wheel, enter/leave, focus and
+close events arrive, and C/P/T toggle cursor visibility, window position and
+title as the state row shows. Escape exits a borderless/fullscreen probe. When
+the window closes, the probe prints its event counts and the typed text to the
+terminal for the qualification record.
 
 Mach-O differs from ELF in two ways that are visible in what `fbc` produces on
 macOS, so they are part of the platform contract rather than a property of one
