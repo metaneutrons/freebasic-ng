@@ -142,7 +142,7 @@ jobs:
 
       - name: Set up MSYS2
         if: matrix.family == 'windows'
-        uses: msys2/setup-msys2@66cd2cce69caa17b53920067426061ca1de3a884 # v2.32.0
+        uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2.33.0
         with:
           msystem: ${{ matrix.msystem }}
           update: true
@@ -326,7 +326,7 @@ jobs:
             --expected-host "$EXPECTED_HOST" --require-gfxlib
 
       - name: Generate an SPDX SBOM
-        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
           file: dist/freebasic-ng-${{ needs.metadata.outputs.version }}-${{ matrix.name }}.${{ matrix.extension }}
           format: spdx-json
@@ -512,7 +512,7 @@ jobs:
             '
 
       - name: Generate an SPDX SBOM
-        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
           file: dist/freebasic-ng_${{ needs.metadata.outputs.version }}-1_${{ matrix.architecture }}.deb
           format: spdx-json
@@ -583,7 +583,7 @@ jobs:
           cosign sign-blob --yes --bundle "${source}.sigstore.json" "$source"
 
       - name: Generate an SPDX SBOM for the source archive
-        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
           file: candidate/freebasic-ng-${{ needs.metadata.outputs.version }}-source.tar.gz
           format: spdx-json
@@ -718,7 +718,7 @@ jobs:
           name: release-candidate
           path: candidate
 
-      - uses: Homebrew/actions/setup-homebrew@1e34f2e2acaa766b7efacb8c26352e6abbb023f9 # 2026.09.13.1
+      - uses: Homebrew/actions/setup-homebrew@e99025eb970cfa124b8284a35463d87426917478 # 2026.09.28.1
         with:
           core: false
           cask: false
