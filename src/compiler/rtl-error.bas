@@ -468,14 +468,14 @@ sub rtlErrorThrow _
 end sub
 
 '':::::
+'' label is the ON ERROR GOTO target, or NULL for ON ERROR GOTO 0.
 sub rtlErrorSetHandler _
 	( _
-		byval newhandler as ASTNODE ptr, _
+		byval label as FBSYMBOL ptr, _
 		byval savecurrent as integer _
 	)
 
-	dim as FBSYMBOL ptr handler_label = any, continue_label = any
-	dim as ASTNODE ptr ctx = any, jumpbuf = any
+	dim as ASTNODE ptr ctx = any, newhandler = any, jumpbuf = any
 
 	'' savecurrent was needed by the old global-handler implementation.  The
 	'' context is now per procedure activation, so every ON ERROR statement
@@ -483,21 +483,31 @@ sub rtlErrorSetHandler _
 	'' procedure exit.
 	hErrorHandlerAddInit( parser.currproc )
 	ctx = hErrorHandlerContext( )
-	jumpbuf = rtlErrorHandlerPush( ctx, astCloneTree( newhandler ) )
 
-	'' setjmp() returns 0 during handler installation, so it skips the handler
-	'' jump. A runtime error in a nested procedure returns here nonzero and
-	'' reaches the target label with this procedure's frame restored.
-	handler_label = symbAddLabel( NULL )
-	continue_label = symbAddLabel( NULL )
+	if( label <> NULL ) then
+		newhandler = astNewADDROF( astNewVAR( label ) )
+	else
+		newhandler = astNewCONSTi( NULL, FB_DATATYPE_UINT )
+	end if
+
+	jumpbuf = rtlErrorHandlerPush( ctx, newhandler )
+
+	'' Without a handler the runtime never longjmp()s to this context, so
+	'' ON ERROR GOTO 0 has no landing site to set up.
+	if( label = NULL ) then
+		astAdd( jumpbuf )
+		exit sub
+	end if
+
+	'' setjmp() returns 0 during handler installation, so it falls through.
+	'' A runtime error in a nested procedure returns here nonzero and enters
+	'' the handler with this procedure's frame restored.  The handler is known
+	'' here, so this is a direct branch: gas64 cannot emit an indirect jump to
+	'' a label address (#187), and no backend needs one.
 	astAdd( astBuildBranch( _
 		astNewBOP( AST_OP_EQ, rtlSetJmp( jumpbuf ), astNewCONSTi( 0 ) ), _
-		handler_label, _
+		label, _
 		FALSE ) )
-	astAdd( astNewBRANCH( AST_OP_JMP, continue_label ) )
-	astAdd( astNewLABEL( handler_label ) )
-	astAdd( astNewBRANCH( AST_OP_JUMPPTR, NULL, newhandler ) )
-	astAdd( astNewLABEL( continue_label ) )
 
 end sub
 

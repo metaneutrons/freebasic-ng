@@ -217,10 +217,9 @@ function cOnStmt _
 
 			lexSkipToken( LEXCHECK_POST_SUFFIX )
 
-			expr = astNewADDROF( astNewVAR( label ) )
-			rtlErrorSetHandler( expr, (islocal = TRUE) )
+			rtlErrorSetHandler( label, (islocal = TRUE) )
 		else
-			rtlErrorSetHandler( astNewCONSTi( NULL, FB_DATATYPE_UINT ), (islocal = TRUE) )
+			rtlErrorSetHandler( NULL, (islocal = TRUE) )
 		end if
 
 		function = TRUE

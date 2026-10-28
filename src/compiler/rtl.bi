@@ -1539,7 +1539,7 @@ declare sub rtlErrorThrow _
 
 declare sub rtlErrorSetHandler _
 	( _
-		byval newhandler as ASTNODE ptr, _
+		byval label as FBSYMBOL ptr, _
 		byval savecurrent as integer _
 	)
 
