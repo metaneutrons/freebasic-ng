@@ -326,8 +326,16 @@ private function hCheckArgForDynWstrParam _
 	dim as integer copyback = FALSE
 
 #if DBG_ARGLOG
-	printf( "[DBG] ArgForDynWstr: isrtl=%d byref=%d dtype=%d iscall=%d\n", _
-		CLng( parent->call.isrtl ), CLng( symbGetParamMode( param ) ), CLng( argdtype ), CLng( astIsCALL( arg ) ) )
+	scope
+		dim as ASTNODE ptr dbgt = arg
+		while( dbgt->class = AST_NODECLASS_LINK andalso dbgt->r <> NULL )
+			dbgt = dbgt->r
+		wend
+		printf( "[DBG] ArgForDynWstr: proc=%s isrtl=%d byref=%d dtype=%d iscall=%d class=%d tailclass=%d tailbyrefderef=%d\n", _
+			symbGetName( symbGetParent( param ) ), _
+			CLng( parent->call.isrtl ), CLng( symbGetParamMode( param ) ), CLng( argdtype ), CLng( astIsCALL( arg ) ), _
+			CLng( arg->class ), CLng( dbgt->class ), CLng( astIsByrefResultDeref( dbgt ) ) )
+	end scope
 #endif
 
 	'' Mirror hCheckArgForStringParam(): an rtlib BYREF managed-string consumer
@@ -362,7 +370,17 @@ private function hCheckArgForDynWstrParam _
 				while( t->class = AST_NODECLASS_LINK andalso t->r <> NULL andalso t->link.ret = AST_LINK_RETURN_RIGHT )
 					t = t->r
 				wend
-				if( t->class <> AST_NODECLASS_CALL ) then
+				'' A BYREF result is wrapped by astBuildByrefResultDeref() into
+				'' DEREF(CALL).  Such a value is the callee's returned reference,
+				'' and for managed WSTRING results the callee always hands out an
+				'' rtlib pool temp (fb_WstrDynAllocTempResult() in its result
+				'' path) - a consumable temporary, never a persistent owner.
+				'' Direct calls get the redundant DEREF folded away by the
+				'' optimizer, but calls through procedure-pointer variables or
+				'' fields (e.g. "st->ToStringFunc(x)") keep it, so check it here
+				'' too instead of exposing the pool descriptor to the callee.
+				if( (t->class <> AST_NODECLASS_CALL) andalso _
+				    (astIsByrefResultDeref( t ) = FALSE) ) then
 					return arg
 				end if
 			end if
