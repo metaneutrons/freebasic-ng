@@ -593,6 +593,12 @@ jobs:
           docker rm "$container_id"
           python3 scripts/verify-morphos-ppc-toolchain.py --verify-installed
 
+      - name: Build MorphOS kernel-debug fixture runner
+        run: |
+          python3 test/morphos/qemu/harness.py build-runner \
+            --cc /opt/ppc-morphos/bin/ppc-morphos-gcc \
+            --output "$RUNNER_TEMP/morphos-fixture-runner"
+
       - name: Build native C producer
         run: |
           cmake -S . -B host-build -G Ninja -DCMAKE_BUILD_TYPE=Release \

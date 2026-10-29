@@ -21,7 +21,9 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent
 DEFAULT_MANIFEST = ROOT / "fixture-manifest.json"
 GUEST_RUNNER = ROOT / "guest" / "run-fixture"
+FIXTURE_RUNNER_SOURCE = ROOT / "guest" / "fixture-runner.c"
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
+DEBUG_LINE_PREFIX_RE = re.compile(r"^[0-9]+(?:\.[0-9]+)?\|\s*")
 
 
 class HarnessError(RuntimeError):
@@ -215,15 +217,52 @@ def create_iso(source_dir: Path, destination: Path, volume: str) -> None:
         raise HarnessError(f"test ISO creation failed with exit code {error.returncode}") from error
 
 
+def build_fixture_runner(compiler_name: str, destination: Path) -> None:
+    compiler = require_command(compiler_name)
+    if destination.is_symlink():
+        raise HarnessError(f"fixture runner output must not be a symlink: {destination}")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="runner-", dir=destination.parent) as directory:
+        temporary = Path(directory) / "fixture-runner"
+        command = [
+            compiler,
+            "-noixemul",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            str(FIXTURE_RUNNER_SOURCE),
+            "-ldebug",
+            "-o",
+            str(temporary),
+        ]
+        try:
+            subprocess.run(command, check=True)
+        except subprocess.CalledProcessError as error:
+            raise HarnessError(
+                f"MorphOS fixture runner build failed with exit code {error.returncode}"
+            ) from error
+        verify_morphos_executable(temporary)
+        os.replace(temporary, destination)
+
+
+def serial_lines(text: str) -> list[str]:
+    lines = []
+    for raw_line in text.replace("\r", "\n").splitlines():
+        line = raw_line.strip().replace("\x00", "")
+        lines.append(DEBUG_LINE_PREFIX_RE.sub("", line))
+    return lines
+
+
 def parse_serial_log(text: str, markers: dict[str, str]) -> None:
-    lines = [line.strip().replace("\x00", "") for line in text.replace("\r", "\n").splitlines()]
+    lines = serial_lines(text)
     begin = markers["begin"]
     passed = markers["pass"]
     exit_prefix = markers["exit_prefix"]
-    for marker in (begin, passed):
-        count = lines.count(marker)
-        if count != 1:
-            raise HarnessError(f"serial marker {marker!r} occurred {count} times, expected once")
+    begin_count = lines.count(begin)
+    if begin_count != 1:
+        raise HarnessError(
+            f"serial marker {begin!r} occurred {begin_count} times, expected once"
+        )
     exits = [line for line in lines if line.startswith(exit_prefix)]
     if len(exits) != 1:
         raise HarnessError(f"serial exit marker occurred {len(exits)} times, expected once")
@@ -233,13 +272,18 @@ def parse_serial_log(text: str, markers: dict[str, str]) -> None:
     exit_code = int(match.group(1))
     if exit_code != 0:
         raise HarnessError(f"MorphOS fixture reported exit code {exit_code}")
+    pass_count = lines.count(passed)
+    if pass_count != 1:
+        raise HarnessError(
+            f"serial marker {passed!r} occurred {pass_count} times, expected once"
+        )
     positions = [lines.index(begin), lines.index(passed), lines.index(exits[0])]
     if positions != sorted(positions) or len(set(positions)) != len(positions):
         raise HarnessError("serial markers are out of order")
 
 
 def serial_has_exit(text: str, exit_prefix: str) -> bool:
-    return any(line.strip().startswith(exit_prefix) for line in text.replace("\r", "\n").splitlines())
+    return any(line.startswith(exit_prefix) for line in serial_lines(text))
 
 
 def build_qemu_command(
@@ -299,6 +343,7 @@ def run_fixture(args: argparse.Namespace, manifest: dict[str, Any], boot: Path) 
     payload.mkdir()
     shutil.copyfile(executable, payload / "smoke")
     shutil.copyfile(GUEST_RUNNER, payload / "run-fixture")
+    build_fixture_runner(args.runner_cc, payload / "fixture-runner")
     payload_iso = run_dir / "payload.iso"
     create_iso(payload, payload_iso, manifest["qemu"]["payload_volume"])
 
@@ -344,6 +389,14 @@ def parser() -> argparse.ArgumentParser:
     prepare_parser = commands.add_parser("prepare", help="download and verify MorphOS boot inputs")
     prepare_parser.add_argument("--cache-dir", type=Path)
 
+    runner_parser = commands.add_parser(
+        "build-runner", help="build the MorphOS kernel-debug fixture runner"
+    )
+    runner_parser.add_argument(
+        "--cc", default=os.environ.get("MORPHOS_CC", "ppc-morphos-gcc")
+    )
+    runner_parser.add_argument("--output", type=Path, required=True)
+
     run_parser = commands.add_parser("run", help="run one executable in the private MorphOS fixture")
     run_parser.add_argument("--cache-dir", type=Path)
     run_parser.add_argument(
@@ -353,6 +406,9 @@ def parser() -> argparse.ArgumentParser:
         "--fixture-sha256", default=os.environ.get("MORPHOS_FIXTURE_SHA256"), required=False
     )
     run_parser.add_argument("--executable", required=True)
+    run_parser.add_argument(
+        "--runner-cc", default=os.environ.get("MORPHOS_CC", "ppc-morphos-gcc")
+    )
     run_parser.add_argument("--work-dir", default="build/morphos-qemu")
     run_parser.add_argument("--timeout", type=int, default=180)
     return result
@@ -371,6 +427,11 @@ def main() -> int:
     args = parser().parse_args()
     try:
         manifest = load_manifest(args.manifest)
+        if args.command == "build-runner":
+            output = args.output.expanduser().resolve()
+            build_fixture_runner(args.cc, output)
+            print(f"built MorphOS fixture runner: {output}")
+            return 0
         cache_dir = cache_dir_from(args)
         iso, boot = prepare(manifest, cache_dir)
         if args.command == "prepare":

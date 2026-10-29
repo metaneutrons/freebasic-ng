@@ -18,9 +18,12 @@ The installed QCOW2 image remains private. Every run requires its SHA-256 on
 the command line or through `MORPHOS_FIXTURE_SHA256`; a different image is
 rejected. QEMU writes only to a temporary copy-on-write overlay.
 
-The fixture deliberately has no network device. Results use MorphOS'
-`serial.device` through the `SER:` DOS device and QEMU's serial log. Do not use
-a boot image that removes or changes MorphOS registration behaviour.
+The fixture deliberately has no network device. A tiny `-noixemul` runner uses
+MorphOS `debug.lib` to place deterministic markers in QEMU's serial log and
+launches the smoke executable with a 64 KiB stack. This avoids the
+interrupt-driven `SER:` DOS handler, which stalls after its first byte under
+the emulated Pegasos II UART in the existing MorphOS 3.19 qualification image.
+Do not use a boot image that removes or changes MorphOS registration behaviour.
 
 ## Prepare the host inputs
 
@@ -68,7 +71,8 @@ python3 test/morphos/qemu/harness.py run \
 ```
 
 The harness verifies a 32-bit big-endian PowerPC ELF input, creates the test
-ISO and overlay, starts QEMU without networking, and accepts only one ordered
+ISO and overlay, builds the fixture runner with `ppc-morphos-gcc` (or
+`MORPHOS_CC`), starts QEMU without networking, and accepts only one ordered
 marker sequence ending in `FBNG:EXIT=0`. Serial and QEMU logs remain below the
 run directory. Generated payload and overlay files are removed after success.
 

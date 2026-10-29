@@ -1,10 +1,2 @@
 FailAt 20
-Echo "FBNG:BEGIN" >SER:
-FBNGTEST:smoke >SER:
-If WARN
-  Echo "FBNG:EXIT=20" >SER:
-  Quit 20
-EndIf
-Echo "FBNG:PROGRAM=PASS" >SER:
-Echo "FBNG:EXIT=0" >SER:
-Quit 0
+FBNGTEST:fixture-runner FBNGTEST:smoke

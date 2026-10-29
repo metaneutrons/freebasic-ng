@@ -8,6 +8,7 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 
 MODULE_PATH = Path(__file__).with_name("harness.py")
@@ -49,14 +50,12 @@ class HarnessContractTests(unittest.TestCase):
             "exit_prefix": "FBNG:EXIT=",
         }
         HARNESS.parse_serial_log(
-            "boot noise\r\nFBNG:BEGIN\r\nsmoke output\r\n"
-            "FBNG:PROGRAM=PASS\r\nFBNG:EXIT=0\r\n",
+            "0.421| boot noise\r\n26.577| FBNG:BEGIN\r\nsmoke output\r\n"
+            "26.622| FBNG:PROGRAM=PASS\r\n26.630| FBNG:EXIT=0\r\n",
             markers,
         )
         with self.assertRaisesRegex(HARNESS.HarnessError, "exit code 20"):
-            HARNESS.parse_serial_log(
-                "FBNG:BEGIN\nFBNG:PROGRAM=PASS\nFBNG:EXIT=20\n", markers
-            )
+            HARNESS.parse_serial_log("FBNG:BEGIN\nFBNG:EXIT=20\n", markers)
 
     def test_missing_and_duplicate_markers_are_rejected(self) -> None:
         markers = {
@@ -98,6 +97,20 @@ class HarnessContractTests(unittest.TestCase):
             executable.write_bytes(header)
             with self.assertRaisesRegex(HARNESS.HarnessError, "32-bit big-endian"):
                 HARNESS.verify_morphos_executable(executable)
+
+    def test_fixture_runner_build_failure_is_fatal(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "marker"
+            with mock.patch.object(HARNESS, "require_command", return_value="false"):
+                with self.assertRaisesRegex(HARNESS.HarnessError, "exit code 1"):
+                    HARNESS.build_fixture_runner("missing-compiler", output)
+            self.assertFalse(output.exists())
+
+    def test_fixture_runner_uses_kernel_debug_output(self) -> None:
+        source = HARNESS.FIXTURE_RUNNER_SOURCE.read_text(encoding="utf-8")
+        self.assertIn("KPrintF", source)
+        self.assertIn("RunCommand", source)
+        self.assertNotIn("serial.device", source)
 
     def test_qemu_command_has_no_network_and_uses_an_overlay(self) -> None:
         command = HARNESS.build_qemu_command(
