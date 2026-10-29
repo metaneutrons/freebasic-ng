@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.25.2](https://github.com/metaneutrons/freebasic-ng/compare/v1.25.1...v1.25.2) (2026-10-29)
+
+
+### Bug Fixes
+
+* **readme:** present complete release matrix ([95dee39](https://github.com/metaneutrons/freebasic-ng/commit/95dee39f035ee9d5467bae91734f5b035a9b2a7e))
+
 ## [1.25.1](https://github.com/metaneutrons/freebasic-ng/compare/v1.25.0...v1.25.1) (2026-10-29)
 
 
