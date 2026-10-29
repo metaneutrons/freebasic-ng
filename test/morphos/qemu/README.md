@@ -89,3 +89,6 @@ python3 -m unittest discover -s test/morphos/qemu -p 'test_*.py'
 These tests can run in public CI. The real MorphOS execution requires the
 private image and belongs on an explicitly configured private runner or in a
 documented local release qualification.
+
+The first completed MorphOS 3.20 emulator run, its exact inputs and its
+counter-probe are recorded in [QUALIFICATION.md](QUALIFICATION.md).
