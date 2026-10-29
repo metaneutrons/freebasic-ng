@@ -789,6 +789,7 @@ jobs:
           server_pid=$!
           cleanup() {
             brew uninstall freebasic-ng >/dev/null 2>&1 || true
+            brew untrust --tap "$tap" >/dev/null 2>&1 || true
             brew untap "$tap" >/dev/null 2>&1 || true
             kill "$server_pid" 2>/dev/null || true
           }
@@ -802,6 +803,7 @@ jobs:
             sleep 1
           done
           brew tap-new --no-git "$tap"
+          brew trust --tap "$tap"
           formula="$(brew --repository "$tap")/Formula/freebasic-ng.rb"
           if [[ -n "$previous_version" ]]; then
             cp "$previous_formula" "$formula"
@@ -826,6 +828,7 @@ jobs:
           brew install "$tap/freebasic-ng"
           brew test "$tap/freebasic-ng"
           brew uninstall freebasic-ng
+          brew untrust --tap "$tap"
           brew untap "$tap"
           kill "$server_pid"
           trap - EXIT
