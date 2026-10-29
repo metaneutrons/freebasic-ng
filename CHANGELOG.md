@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.25.1](https://github.com/metaneutrons/freebasic-ng/compare/v1.25.0...v1.25.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* **release:** trust qualification Homebrew tap ([4839a76](https://github.com/metaneutrons/freebasic-ng/commit/4839a7695dd9a0eb8174bd524e77a81531078e7e))
+
 ## [1.25.0](https://github.com/metaneutrons/freebasic-ng/compare/v1.24.4...v1.25.0) (2026-10-29)
 
 
