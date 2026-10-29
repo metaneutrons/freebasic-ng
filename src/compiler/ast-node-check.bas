@@ -10,6 +10,22 @@
 #include once "ast.bi"
 #include once "lex.bi"
 
+'' The bounds/null-check helpers return an error-handler function pointer.
+'' Current ON ERROR handling normally longjmp()s before that return, but the
+'' legacy no-context fallback still needs to invoke the returned handler.  The
+'' C backends must emit a function call here: a computed goto is only valid for
+'' labels in the current C function, and AppleClang 21 rejects it when this
+'' function takes no label address.  Assembly backends retain their established
+'' indirect jump.
+private sub hEmitErrorHandlerTransfer( byval handler as IRVREG ptr )
+	select case as const( env.clopt.backend )
+	case FB_BACKEND_GCC, FB_BACKEND_CLANG
+		irEmitCALLPTR( NULL, handler, NULL, 0, 0 )
+	case else
+		irEmitJUMPPTR( handler )
+	end select
+end sub
+
 '':::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 '' Bounds checking (l = index; r = call to checking func(lb, ub))
 '':::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -117,7 +133,7 @@ function astLoadBOUNDCHK _
 		           irAllocVRIMM( FB_DATATYPE_INTEGER, NULL, 0 ), _
 		           NULL, _
 		           label, IR_EMITOPT_NONE )
-		irEmitJUMPPTR( vr )
+		hEmitErrorHandlerTransfer( vr )
 		irEmitLABELNF( label )
 	end if
 
@@ -211,7 +227,7 @@ function astLoadPTRCHK _
 		           irAllocVRIMM( FB_DATATYPE_INTEGER, NULL, 0 ), _
 		           NULL, _
 		           label, IR_EMITOPT_NONE )
-		irEmitJUMPPTR( vr )
+		hEmitErrorHandlerTransfer( vr )
 		irEmitLABELNF( label )
 	end if
 

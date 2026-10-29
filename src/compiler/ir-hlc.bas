@@ -3279,7 +3279,15 @@ private sub _emitCallPtr _
 
 	static as string s
 
-	s = "(" + exprFlush( exprNewVREG( v1 ) ) + ")"
+	'' A NULL procedure symbol is the error-check fallback, whose runtime ABI
+	'' returns a generic pointer although the value is an FB_ERRHANDLER.  Cast it
+	'' to the matching no-argument function type before calling it.  Normal
+	'' function-pointer calls retain their declared type and existing path.
+	if( proc = NULL ) then
+		s = "((void (*)(void))" + exprFlush( exprNewVREG( v1 ) ) + ")"
+	else
+		s = "(" + exprFlush( exprNewVREG( v1 ) ) + ")"
+	end if
 	hDoCall( s, bytestopop, vr, level )
 
 end sub

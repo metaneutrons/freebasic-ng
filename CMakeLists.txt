@@ -263,6 +263,20 @@ if(FB_BUILD_TESTS OR FB_BUILD_LEGACY_UNIT_TESTS OR
             SOURCE test/cmake/error-handler-goto-zero.bas
             FBC_FLAGS -e
             EXPECTED_EXIT_CODE 100)
+        fb_add_compiler_regression(array-bounds-exx-valid
+            SOURCE test/cmake/array-bounds-exx-valid.bas
+            FBC_FLAGS -exx)
+        fb_add_compiler_regression(array-bounds-exx-invalid
+            SOURCE test/cmake/array-bounds-exx-invalid.bas
+            FBC_FLAGS -exx
+            EXPECTED_EXIT_CODE 6)
+        fb_add_compiler_regression(null-pointer-exx-valid
+            SOURCE test/cmake/null-pointer-exx-valid.bas
+            FBC_FLAGS -exx)
+        fb_add_compiler_regression(null-pointer-exx-invalid
+            SOURCE test/cmake/null-pointer-exx-invalid.bas
+            FBC_FLAGS -exx
+            EXPECTED_EXIT_CODE 7)
     endif()
 
     # The error handler regressions again with gas64, which emits the handler
