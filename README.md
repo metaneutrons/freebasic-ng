@@ -22,6 +22,20 @@ upstream base and the fork's compatibility policy are documented in
 Release tags use `v<version>` and release assets use the
 `freebasic-ng-<version>-<platform>` prefix.
 
+## Install
+
+Use [freebasic.metaneutrons.cc](https://freebasic.metaneutrons.cc/) for the
+operating-system and architecture picker, release downloads and package-manager
+setup.  The Debian instructions include the required `deb.metaneutrons.cc`
+repository configuration before installation; the site also links the
+Homebrew tap and the AUR source and binary packages.  GitHub release archives
+remain available from the
+[release page](https://github.com/metaneutrons/freebasic-ng/releases).
+
+Install or upgrade the compiler, runtime and graphics libraries as one package
+or versioned archive.  Do not copy a new `fbc` over libraries from another
+FreeBASIC-NG or upstream FreeBASIC version.
+
 ## Build
 
 Requirements:
@@ -55,8 +69,17 @@ cmake --install build --prefix "$PWD/stage"
 CI and stable releases cover Linux x86_64/aarch64, macOS x86_64/aarch64 and
 Windows x86_64/aarch64 as Tier 1 native hosts.
 
-AmigaOS, AROS and MorphOS are separate target-SDK work. They are not advertised
-as native host releases until cross-compilation and runtime validation exist.
+Tier 1 archives contain the matching runtime and graphics-library variants.
+On macOS, graphics programs use the native Cocoa/CoreGraphics backend and do
+not require XQuartz.  Windowed, borderless, always-on-top and fullscreen modes
+are supported; the documented limitations and manual qualification procedure
+are in the [platform notes](docs/platform-support.md#macos-output-conventions).
+The macOS archives and object files produced by their compiler target macOS
+11.0 or newer.
+
+AmigaOS/m68k and MorphOS/PowerPC have developer-preview target SDKs with
+documented emulator runtime evidence.  They are not Tier 1 native host releases
+or package-manager targets.  AROS qualification remains deferred to M6.
 
 ## Compatibility
 

@@ -91,6 +91,19 @@ failed to compile wherever clang translates the generated C: on macOS, and on
 the `win32-aarch64` host, whose CLANGARM64 toolchain ships clang under the `gcc`
 name. `-e` was not buildable on that host before this release.
 
+## `-exx` bounds and null checks compile with AppleClang 21
+
+AppleClang 21 rejects a computed goto when the current C function contains no
+address-of-label expression. Array bounds and null-pointer checks generated
+exactly that form, so an otherwise valid program built with `-exx` failed during
+C compilation on current macOS. The C backends now call the returned legacy
+error-handler function pointer instead; current `ON ERROR` handlers continue to
+use their per-procedure transfer context. Assembly backends are unchanged.
+
+Both sides are release-tested: valid array and pointer access must run, while
+an out-of-bounds access and a null dereference must still end with runtime
+errors 6 and 7 respectively.
+
 ## `ON ERROR GOTO` handlers run in their own procedure
 
 A handler installed with `ON ERROR GOTO` is often reached from an error raised
@@ -106,6 +119,17 @@ so they need a handler in that procedure, typically one installed with
 `ON LOCAL ERROR GOTO`. From a handler in another procedure they end the program
 with runtime error 5 (illegal resume), because the failing procedure has
 already been left.
+
+## MorphOS has a qualified developer-preview runtime harness
+
+The pinned MorphOS/PowerPC cross-toolchain now builds and links a FreeBASIC
+smoke program that has been executed under MorphOS 3.20 on the repository QEMU
+harness. The qualification record pins the compiler, cross-toolchain, QEMU,
+private guest image and executable, and records the ordered success markers and
+a rejected non-zero counter-probe.
+
+This is target-SDK evidence, not a MorphOS native compiler release. The guest
+image remains private and is not part of any release asset.
 
 <!-- freebasic-ng:public-release-notes:end -->
 
