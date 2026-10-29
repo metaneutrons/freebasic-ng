@@ -117,6 +117,10 @@ AROS remains deferred to the later
 MorphOS M6 has a pinned SDK, a CMake runtime archive and a FreeBASIC
 link check in CI, recorded in
 [`cmake/toolchains/morphos-ppc.lock.json`](../cmake/toolchains/morphos-ppc.lock.json).
-That establishes neither execution nor process termination on MorphOS, so the
-target remains unqualified and is not published as supported.
+The repository also contains a
+[serial QEMU runtime harness](../test/morphos/qemu/README.md) for a private,
+hash-pinned MorphOS 3.20 base image. Its portable contract tests run in public
+CI, while the actual guest execution remains an explicit local or private-runner
+qualification step. Until that execution evidence is recorded, the target
+remains unqualified and is not published as supported.
 Package publication to APT, Homebrew and the AUR is M2 work.

@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "morphos": {
+    "version": "3.20",
+    "iso": {
+      "filename": "morphos-3.20.iso",
+      "url": "https://www.morphos-team.net/morphos-3.20.iso",
+      "size": 471126016,
+      "md5": "70b84b8c0bb1cf9b10b7062fe8809c85",
+      "sha256": "3761e191124cfd204a490915f8d285d55969e95b66c5c3cd1cf854bc71dab911"
+    },
+    "boot": {
+      "member": "boot.img",
+      "filename": "morphos-3.20-boot.img",
+      "size": 1764428,
+      "sha256": "7c38f0eb7587924fe997ecea0dad7f9af8d2202526b3cbd18516a03eb23736b1"
+    }
+  },
+  "qemu": {
+    "machine": "pegasos2",
+    "payload_volume": "FBNGTEST",
+    "markers": {
+      "begin": "FBNG:BEGIN",
+      "pass": "FBNG:PROGRAM=PASS",
+      "exit_prefix": "FBNG:EXIT="
+    }
+  }
+}
