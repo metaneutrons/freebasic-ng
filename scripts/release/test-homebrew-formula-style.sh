@@ -7,7 +7,11 @@ version=$(sed -nE 's/^FBVERSION[[:space:]]*:=[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/freebasic-ng-formula-style.XXXXXX")
 created_tap=''
+trusted_tap=''
 cleanup() {
+  if [[ -n "$trusted_tap" ]]; then
+    brew untrust --tap "$trusted_tap" >/dev/null 2>&1 || true
+  fi
   if [[ -n "$created_tap" ]]; then
     brew untap "$created_tap" >/dev/null 2>&1 || true
   fi
@@ -45,5 +49,7 @@ if brew tap | grep -Fxq "$tap"; then
 fi
 brew tap-new --no-git "$tap"
 created_tap="$tap"
+brew trust --tap "$tap"
+trusted_tap="$tap"
 command cp -f "$formula" "$(brew --repository "$tap")/Formula/freebasic-ng.rb"
 brew audit --strict "$tap/freebasic-ng"
