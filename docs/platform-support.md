@@ -125,7 +125,11 @@ link check in CI, recorded in
 The repository also contains a
 [serial QEMU runtime harness](../test/morphos/qemu/README.md) for a private,
 hash-pinned MorphOS 3.20 base image. Its portable contract tests run in public
-CI, while the actual guest execution remains an explicit local or private-runner
-qualification step. Until that execution evidence is recorded, the target
-remains unqualified and is not published as supported.
+CI. The completed MorphOS 3.20 execution, exact compiler/toolchain/image inputs,
+ordered success markers, normal exit and rejected non-zero counter-probe are
+recorded in the
+[qualification record](../test/morphos/qemu/QUALIFICATION.md). MorphOS is
+therefore a qualified developer-preview target SDK; it remains neither a Tier 1
+native host release nor a package-manager target. Future release qualification
+continues to require the private image on a documented local or private runner.
 Package publication to APT, Homebrew and the AUR is M2 work.
