@@ -44,7 +44,9 @@ compiler and extracted archive; a successful link alone is not window-runtime
 evidence. Debian, Homebrew and both AUR packages also compile and run a
 headless graphics-link probe after installation. A real keyboard, mouse and
 display check remains a manual release-qualification step; a hosted runner
-cannot establish user-interaction quality merely by linking a library.
+cannot establish user-interaction quality merely by linking a library. Which
+macOS hardware that check covers is recorded in
+[the platform contract](platform-support.md#macos-output-conventions).
 
 The workflow publishes a GitHub prerelease only after all six archives are
 present. Each archive has:
