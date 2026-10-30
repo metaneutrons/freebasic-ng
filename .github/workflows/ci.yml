@@ -11,7 +11,57 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Classify changes
+    runs-on: ubuntu-24.04
+    outputs:
+      code: ${{ steps.scope.outputs.code }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Test CI scope and documentation validators
+        run: python3 -B -m unittest discover -s tests/workflow -p 'test_*.py'
+
+      - name: Classify the change set
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" != pull_request ]]; then
+            echo 'code=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git cat-file -e "${BASE_SHA}^{commit}" || {
+            echo "::error::base commit ${BASE_SHA} is not available"
+            exit 1
+          }
+          code=$(git diff --name-only -z "$BASE_SHA" HEAD | python3 -B scripts/ci/classify_scope.py --null)
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
+  documentation:
+    name: Documentation and assets
+    needs: changes
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate README images and SVG assets
+        run: python3 -B scripts/ci/check_documentation.py
+
+      - name: Reject whitespace errors
+        run: git diff --check
+
   build:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -184,6 +234,8 @@ jobs:
 
   release-archive-replace:
     name: Release archive replacement contract
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
 
     steps:
@@ -224,6 +276,8 @@ jobs:
 
   darwin-aarch64-selfhost:
     name: Self-host Darwin ARM64
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: macos-15
 
     steps:
@@ -260,6 +314,8 @@ jobs:
 
   linux-x86_64-legacy-tests:
     name: Legacy suites Linux x64
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
 
     steps:
@@ -299,6 +355,8 @@ jobs:
 
   linux-x86_64-legacy-debug:
     name: Legacy debug Linux x64 (${{ matrix.backend }}, ${{ matrix.id }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -377,6 +435,8 @@ jobs:
 
   linux-x86-legacy-debug:
     name: Legacy debug Linux x86 (${{ matrix.id }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -481,6 +541,8 @@ jobs:
 
   amigaos-m68k:
     name: AmigaOS 3 m68k runtime smoke
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
 
     steps:
@@ -563,6 +625,8 @@ jobs:
 
   morphos-ppc:
     name: MorphOS PowerPC runtime link
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
 
     steps:
@@ -628,6 +692,8 @@ jobs:
 
   target-generation:
     name: Target generation (C output only)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -669,3 +735,28 @@ jobs:
             grep -q "fb_PrintString" /tmp/hello.c
             echo "generated C only for ${target}; no target ABI, linker or runtime assertion"
           done
+
+  ci-success:
+    name: CI Success
+    if: always()
+    needs:
+      - changes
+      - documentation
+      - build
+      - release-archive-replace
+      - darwin-aarch64-selfhost
+      - linux-x86_64-legacy-tests
+      - linux-x86_64-legacy-debug
+      - linux-x86-legacy-debug
+      - amigaos-m68k
+      - morphos-ppc
+      - target-generation
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Require every selected job to succeed
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          jq -e 'all(.[]; .result == "success" or .result == "skipped")' <<< "$NEEDS_JSON"

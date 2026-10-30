@@ -3,6 +3,8 @@
 *.exe
 *.dll
 *.so
+*.py[cod]
+__pycache__/
 /fbc
 /fbc-new
 /bin/*
