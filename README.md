@@ -3,10 +3,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/metaneutrons/freebasic-ng/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/metaneutrons/freebasic-ng/ci.yml?branch=main&amp;style=flat-square&amp;label=CI&amp;color=76e5c2" alt="CI status"></a>
-  <a href="https://github.com/metaneutrons/freebasic-ng/releases/latest"><img src="https://img.shields.io/github/v/release/metaneutrons/freebasic-ng?style=flat-square&amp;color=86b9ff" alt="Latest release"></a>
-  <a href="https://freebasic.metaneutrons.cc/"><img src="https://img.shields.io/badge/hosts-Linux%20%7C%20macOS%20%7C%20Windows-86b9ff?style=flat-square" alt="Hosts: Linux, macOS and Windows"></a>
-  <a href="LICENSE.md"><img src="https://img.shields.io/badge/compiler-GPL--2.0--or--later-76e5c2?style=flat-square" alt="Compiler licence: GPL-2.0-or-later"></a>
+  <a href="https://github.com/metaneutrons/freebasic-ng/actions/workflows/ci.yml"><img src="https://github.com/metaneutrons/freebasic-ng/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
+  <a href="https://github.com/metaneutrons/freebasic-ng/releases/latest"><img src=".github/assets/badges/release.svg" alt="Latest stable release"></a>
+  <a href="https://freebasic.metaneutrons.cc/"><img src=".github/assets/badges/hosts.svg" alt="Hosts: Linux, macOS and Windows"></a>
+  <a href="LICENSE.md"><img src=".github/assets/badges/license.svg" alt="Compiler licence: GPL-2.0-or-later"></a>
 </p>
 
 <p align="center">
