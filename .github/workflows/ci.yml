@@ -29,18 +29,23 @@ jobs:
       - name: Classify the change set
         id: scope
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PULL_REQUEST_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
-          if [[ "$GITHUB_EVENT_NAME" != pull_request ]]; then
+          base_sha=$(python3 -B scripts/ci/classify_scope.py \
+            --event-name "$GITHUB_EVENT_NAME" \
+            --pull-request-base "$PULL_REQUEST_BASE" \
+            --push-before "$PUSH_BEFORE")
+          if [[ -z "$base_sha" ]]; then
             echo 'code=true' >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          git cat-file -e "${BASE_SHA}^{commit}" || {
-            echo "::error::base commit ${BASE_SHA} is not available"
+          git cat-file -e "${base_sha}^{commit}" || {
+            echo "::error::base commit ${base_sha} is not available"
             exit 1
           }
-          code=$(git diff --name-only -z "$BASE_SHA" HEAD | python3 -B scripts/ci/classify_scope.py --null)
+          code=$(git diff --name-only -z "$base_sha" HEAD | python3 -B scripts/ci/classify_scope.py --null)
           echo "code=$code" >> "$GITHUB_OUTPUT"
 
   documentation:
