@@ -36,6 +36,14 @@ class ClassifyScopeTests(unittest.TestCase):
     def test_mixed_change_requires_code_ci(self) -> None:
         self.assertTrue(MODULE.requires_code_ci(["README.md", "CMakeLists.txt"]))
 
+    def test_pull_request_and_push_select_their_base(self) -> None:
+        self.assertEqual(MODULE.base_for_event("pull_request", "pr-base", "push-base"), "pr-base")
+        self.assertEqual(MODULE.base_for_event("push", "pr-base", "push-base"), "push-base")
+
+    def test_dispatch_and_initial_push_require_full_ci(self) -> None:
+        self.assertIsNone(MODULE.base_for_event("workflow_dispatch", "", ""))
+        self.assertIsNone(MODULE.base_for_event("push", "", "0" * 40))
+
 
 if __name__ == "__main__":
     unittest.main()
