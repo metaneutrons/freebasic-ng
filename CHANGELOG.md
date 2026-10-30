@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.25.3](https://github.com/metaneutrons/freebasic-ng/compare/v1.25.2...v1.25.3) (2026-10-30)
+
+
+### Bug Fixes
+
+* **ci:** scope documentation pushes ([5e00c9c](https://github.com/metaneutrons/freebasic-ng/commit/5e00c9cb50c727a3f0f5a01d72cf168b63b39d59))
+* **ci:** scope documentation-only pull requests ([eade2f5](https://github.com/metaneutrons/freebasic-ng/commit/eade2f586316769df0e85ee6e657e44c27b1a1e6))
+* **compiler:** fold WChr literals for target WChar width ([#208](https://github.com/metaneutrons/freebasic-ng/issues/208)) ([2f9bde5](https://github.com/metaneutrons/freebasic-ng/commit/2f9bde5abf0da881ea1c033b467862875a422934)), closes [#207](https://github.com/metaneutrons/freebasic-ng/issues/207)
+* **readme:** make badges render reliably ([d04b681](https://github.com/metaneutrons/freebasic-ng/commit/d04b681d328f9b63ab3030be71eedab53a4e23ff))
+
 ## [1.25.2](https://github.com/metaneutrons/freebasic-ng/compare/v1.25.1...v1.25.2) (2026-10-29)
 
 
