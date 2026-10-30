@@ -24,7 +24,7 @@ jobs:
           persist-credentials: false
 
       - name: Test CI scope and documentation validators
-        run: python3 -m unittest discover -s tests/workflow -p 'test_*.py'
+        run: python3 -B -m unittest discover -s tests/workflow -p 'test_*.py'
 
       - name: Classify the change set
         id: scope
@@ -40,7 +40,7 @@ jobs:
             echo "::error::base commit ${BASE_SHA} is not available"
             exit 1
           }
-          code=$(git diff --name-only -z "$BASE_SHA" HEAD | python3 scripts/ci/classify_scope.py --null)
+          code=$(git diff --name-only -z "$BASE_SHA" HEAD | python3 -B scripts/ci/classify_scope.py --null)
           echo "code=$code" >> "$GITHUB_OUTPUT"
 
   documentation:
@@ -54,7 +54,7 @@ jobs:
           persist-credentials: false
 
       - name: Validate README images and SVG assets
-        run: python3 scripts/ci/check_documentation.py
+        run: python3 -B scripts/ci/check_documentation.py
 
       - name: Reject whitespace errors
         run: git diff --check
