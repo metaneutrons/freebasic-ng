@@ -42,22 +42,34 @@ private function hWstrLiteralConcat _
 	) as ASTNODE ptr
 
 	dim as FBSYMBOL ptr s = any, ls = any, rs = any
+	dim as integer ls_units = any, rs_units = any
 
 	ls = astGetSymbol( l )
 	rs = astGetSymbol( r )
 
+	if( symbGetType( ls ) = FB_DATATYPE_WCHAR ) then
+		hUnescapeWTarget( symbGetVarLitTextW( ls ), ls_units )
+	else
+		ls_units = symbGetStrLength( ls )
+	end if
+	if( symbGetType( rs ) = FB_DATATYPE_WCHAR ) then
+		hUnescapeWTarget( symbGetVarLitTextW( rs ), rs_units )
+	else
+		rs_units = symbGetStrLength( rs )
+	end if
+
 	if( symbGetType( ls ) <> FB_DATATYPE_WCHAR ) then
 		'' new len = both strings' len less the 2 null-chars
 		s = symbAllocWstrConst( wstr( *symbGetVarLitText( ls ) ) + *symbGetVarLitTextW( rs ), _
-		                        symbGetStrLength( ls ) + symbGetWstrLength( rs ) )
+		                        ls_units + rs_units )
 
 	elseif( symbGetType( rs ) <> FB_DATATYPE_WCHAR ) then
 		s = symbAllocWstrConst( *symbGetVarLitTextW( ls ) + wstr( *symbGetVarLitText( rs ) ), _
-		                        symbGetWstrLength( ls ) + symbGetStrLength( rs ) )
+		                        ls_units + rs_units )
 
 	else
 		s = symbAllocWstrConst( *symbGetVarLitTextW( ls ) + *symbGetVarLitTextW( rs ), _
-		                        symbGetWstrLength( ls ) + symbGetWstrLength( rs ) )
+		                        ls_units + rs_units )
 	end if
 
 	function = astNewVAR( s )

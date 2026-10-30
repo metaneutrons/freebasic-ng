@@ -1338,6 +1338,44 @@ function hUnescape _
 
 end function
 
+private function hDecodeEscapedWChar _
+	( _
+		byref src as const wstring ptr, _
+		byval src_end as const wstring ptr, _
+		byref char as uinteger _
+	) as integer
+
+	if( src >= src_end ) then return FALSE
+	char = *src
+	src += 1
+
+	if( char <> FB_INTSCAPECHAR ) then return TRUE
+	if( src >= src_end ) then return FALSE
+
+	char = *src
+	src += 1
+
+	if( (char >= 1) and (char <= 11) ) then
+		dim as integer digits = char
+		char = 0
+		do while( digits > 0 )
+			char = (char * 8) + (*src - CHAR_0)
+			src += 1
+			digits -= 1
+		loop
+	elseif( char = asc( "u" ) ) then
+		if( src + 4 > src_end ) then return FALSE
+		char = hUnicodeHexToCodePointW( src, 4 )
+	elseif( char = asc( "U" ) ) then
+		if( src + 8 > src_end ) then return FALSE
+		char = hUnicodeHexToCodePointW( src, 8 )
+	else
+		char = hRemapChar( char )
+	end if
+
+	function = TRUE
+end function
+
 '':::::
 function hUnescapeW _
 	( _
@@ -1346,8 +1384,10 @@ function hUnescapeW _
 	) as wstring ptr static
 
 	static as DWSTRING res
-	dim as integer char, lgt, i
-	dim as wstring ptr src, dst, src_end
+	dim as uinteger char
+	dim as integer lgt
+	dim as const wstring ptr src, src_end
+	dim as wstring ptr dst
 
 	textlen = 0
 
@@ -1363,47 +1403,7 @@ function hUnescapeW _
 
 	src_end = src + lgt
 	do while( src < src_end )
-		char = *src
-		src += 1
-
-		if( char = FB_INTSCAPECHAR ) then
-
-			if( src >= src_end ) then exit do
-			char = *src
-			src += 1
-
-			'' octagonal? convert to integer..
-			'' note: it can be up to 11 digits due wchr()
-			'' when evaluated at compile-time
-			if( (char >= 1) and (char <= 11) ) then
-				i = char
-				char = 0
-				do while( i > 0 )
-					char = (char * 8) + (*src - CHAR_0)
-					src += 1
-					i -= 1
-				loop
-
-			else
-				'' unicode 16-bit? or 32-bit?
-
-				'' CHAR_ULOW
-				if( char = asc( "u" ) ) then
-					if( src + 4 > src_end ) then exit do
-					char = hUnicodeHexToCodePointW( src, 4 )
-
-				'' CHAR_UUPP
-				elseif( char = asc( "U" ) ) then
-					if( src + 8 > src_end ) then exit do
-					char = hUnicodeHexToCodePointW( src, 8 )
-
-				'' remap char as they will become a octagonal seq
-				else
-					char = hRemapChar( char )
-				end if
-			end if
-
-		end if
+		if( hDecodeEscapedWChar( src, src_end, char ) = FALSE ) then exit do
 
 		if( sizeof( wstring ) = 2 ) then
 
@@ -1433,6 +1433,71 @@ function hUnescapeW _
 	textlen = (cast(integer, dst) - cast(integer, res.data)) \ sizeof(wstring)
 	function = res.data
 
+end function
+
+'' Decode an internally escaped WSTRING literal into target WCHAR code units.
+'' The compiler host's WSTRING width may differ from the selected target's.
+function hUnescapeWTarget _
+	( _
+		byval text as const wstring ptr, _
+		byref textlen as integer = 0 _
+	) as const uinteger ptr
+
+	static as uinteger ptr res
+	static as integer room
+	static as uinteger empty = 0
+	dim as uinteger char
+	dim as integer lgt, outlen, targetwcharlen
+	dim as const wstring ptr src, src_end
+
+	textlen = 0
+	lgt = len( *text )
+	if( lgt = 0 ) then
+		return @empty
+	end if
+
+	'' A Unicode scalar expands to at most two UTF-16 code units.
+	var needed = (lgt * 2) + 1
+	if( needed > room ) then
+		if( res = NULL ) then
+			res = xallocate( needed * sizeof( uinteger ) )
+		else
+			res = xreallocate( res, needed * sizeof( uinteger ) )
+		end if
+		room = needed
+	end if
+
+	targetwcharlen = typeGetSize( FB_DATATYPE_WCHAR )
+	src = text
+	src_end = src + lgt
+	outlen = 0
+
+	do while( src < src_end )
+		if( hDecodeEscapedWChar( src, src_end, char ) = FALSE ) then exit do
+
+		select case targetwcharlen
+		case 1
+			res[outlen] = char and &hFFu
+			outlen += 1
+		case 2
+			if( char > &hFFFFu ) then
+				char -= &h10000u
+				res[outlen] = (char shr 10) + &hD800u
+				res[outlen + 1] = (char and &h3FFu) + &hDC00u
+				outlen += 2
+			else
+				res[outlen] = char
+				outlen += 1
+			end if
+		case else
+			res[outlen] = char
+			outlen += 1
+		end select
+	loop
+
+	res[outlen] = 0
+	textlen = outlen
+	function = res
 end function
 
 function hCharNeedsEscaping _
