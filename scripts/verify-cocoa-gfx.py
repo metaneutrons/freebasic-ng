@@ -66,6 +66,11 @@ def main() -> None:
                      "-x", str(executable)], cwd=build)
                 run([str(executable)], cwd=build, env=env)
 
+        # The interactive probe needs a person at the keyboard, so CI cannot
+        # run it; building it keeps the release-qualification tool usable.
+        run([str(fbc), str(ROOT / "tests/gfx/cocoa-interactive.bas"),
+             "-x", str(build / "cocoa-interactive")], cwd=build)
+
 
 if __name__ == "__main__":
     main()

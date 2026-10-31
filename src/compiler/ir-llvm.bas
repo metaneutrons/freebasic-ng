@@ -558,7 +558,7 @@ private sub hBuildWstrLit _
 	( _
 		byref ln as string, _
 		byval wantedlength as integer, _  '' including null terminator
-		byval w as wstring ptr, _
+		byval w as const uinteger ptr, _
 		byval length as integer _         '' ditto
 	)
 
@@ -581,7 +581,7 @@ private sub hBuildWstrLit _
 	end if
 
 	for i as integer = 0 to length - 1
-		ch = (*w)[i]
+		ch = w[i]
 		'' (ditto)
 		if( hCharNeedsEscaping( ch, asc( """" ) ) ) then
 			if( wcharsize >= 1 ) then
@@ -672,7 +672,7 @@ private sub hEmitVariable( byval sym as FBSYMBOL ptr )
 			ln += " c"""
 			if( symbGetType( sym ) = FB_DATATYPE_WCHAR ) then
 				length = symbGetWstrLength( sym ) + 1
-				hBuildWstrLit( ln, length, hUnescapeW( symbGetVarLitTextW( sym ) ), length )
+				hBuildWstrLit( ln, length, hUnescapeWTarget( symbGetVarLitTextW( sym ) ), length )
 			else
 				length = symbGetStrLength( sym ) + 1
 				hBuildStrLit( ln, length, hUnescape( symbGetVarLitText( sym ) ), length )
@@ -2345,7 +2345,7 @@ private sub _emitVarIniWstr _
 		ctx.varini += hEmitStrLitType( varlength ) + " "
 	end if
 	ctx.varini += "c"""
-	hBuildWstrLit( ctx.varini, varlength + 1, hUnescapeW( literal ), litlength + 1 )
+	hBuildWstrLit( ctx.varini, varlength + 1, hUnescapeWTarget( literal ), litlength + 1 )
 	ctx.varini += """"
 	hVarIniSeparator( )
 

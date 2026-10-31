@@ -100,6 +100,12 @@ declare function hUnescapeW _
 		byref textlen as integer = 0 _
 	) as wstring ptr
 
+declare function hUnescapeWTarget _
+	( _
+		byval text as const wstring ptr, _
+		byref textlen as integer = 0 _
+	) as const uinteger ptr
+
 declare function hHasEscape _
 	( _
 		byval text as zstring ptr _

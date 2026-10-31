@@ -2230,7 +2230,7 @@ end sub
 private sub hBuildWstrLit _
 	( _
 		byref ln as string, _
-		byval w as wstring ptr, _
+		byval w as const uinteger ptr, _
 		byval length as longint _  '' including null terminator
 	)
 
@@ -2253,18 +2253,18 @@ private sub hBuildWstrLit _
 	'' Don't bother emitting the null terminator explicitly - gcc will add
 	'' it automatically already
 	for i as integer = 0 to length - 2
-		ch = (*w)[i]
+		ch = w[i]
 
 		if( hCharNeedsEscaping( ch, asc( """" ) ) ) then
 			ln += $"\x" + hex( ch, wcharsize * 2 )
-			if( hIsValidHexDigit( (*w)[i+1] ) ) then
+			if( hIsValidHexDigit( w[i+1] ) ) then
 				ln += """ " + *strstart
 			end if
 		elseif( ch = asc( "?" ) ) then
 			ln += "?"
-			if( (*w)[i+1] = asc( "?" ) ) then
+			if( w[i+1] = asc( "?" ) ) then
 				assert( (i+2) < length )  '' null terminator not yet reached
-				select case( (*w)[i+2] )
+				select case( w[i+2] )
 				case asc( "=" ), asc( "/" ), asc( "'" ), _
 				     asc( "(" ), asc( ")" ), asc( "!" ), _
 				     asc( "<" ), asc( ">" ), asc( "-" )
@@ -2382,7 +2382,7 @@ private sub hSym2Text( byref s as string, byval sym as FBSYMBOL ptr )
 	'' String literal?
 	if( symbGetIsLiteral( sym ) ) then
 		if( symbGetType( sym ) = FB_DATATYPE_WCHAR ) then
-			hBuildWstrLit( s, hUnescapeW( symbGetVarLitTextW( sym ) ), symbGetWstrLength( sym ) + 1 )
+			hBuildWstrLit( s, hUnescapeWTarget( symbGetVarLitTextW( sym ) ), symbGetWstrLength( sym ) + 1 )
 		else
 			hBuildStrLit( s, hUnescape( symbGetVarLitText( sym ) ), symbGetStrLength( sym ) + 1, 0 )
 		end if
@@ -3246,7 +3246,15 @@ private sub _emitCallPtr _
 
 	static as string s
 
-	s = "(" + exprFlush( exprNewVREG( v1 ) ) + ")"
+	'' A NULL procedure symbol is the error-check fallback, whose runtime ABI
+	'' returns a generic pointer although the value is an FB_ERRHANDLER.  Cast it
+	'' to the matching no-argument function type before calling it.  Normal
+	'' function-pointer calls retain their declared type and existing path.
+	if( proc = NULL ) then
+		s = "((void (*)(void))" + exprFlush( exprNewVREG( v1 ) ) + ")"
+	else
+		s = "(" + exprFlush( exprNewVREG( v1 ) ) + ")"
+	end if
 	hDoCall( s, bytestopop, vr, level )
 
 end sub
@@ -3872,7 +3880,7 @@ private sub _emitVarIniWstr _
 	''    unsigned int mywstring[] = { L'f', L'o', L'o' }
 
 	ctx.varini += "{ "
-	literal = hUnescapeW( literal )
+	dim as const uinteger ptr targetliteral = hUnescapeWTarget( literal )
 	wcharsize = typeGetSize( FB_DATATYPE_WCHAR )
 
 	'' String literal too long?
@@ -3893,7 +3901,7 @@ private sub _emitVarIniWstr _
 			ctx.varini += "L'"
 		end if
 
-		ch = (*literal)[i]
+		ch = targetliteral[i]
 
 		if( hCharNeedsEscaping( ch, asc( "'" ) ) ) then
 			ctx.varini += $"\x" + hex( ch, wcharsize * 2 )

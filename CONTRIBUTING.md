@@ -15,6 +15,14 @@ or a documented reason why automated coverage is not feasible.
 - Preserve upstream copyright and licence notices.
 - Run the relevant CMake build and `fbc --version` smoke test before requesting review.
 
+## CI scope
+
+Pull requests and ordinary `main` pushes that change only Markdown, `docs/`,
+`.github/assets/` or issue templates run the change classifier and documentation
+asset checks without starting native build matrices. Source, workflow, lockfile,
+toolchain, mixed and unknown-path changes select the full CI scope. Manual
+workflow dispatches and initial branch pushes also select full CI.
+
 ## Compatibility and platforms
 
 Do not present an experimental code-generation target as a supported native

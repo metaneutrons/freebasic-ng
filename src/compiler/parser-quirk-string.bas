@@ -249,7 +249,9 @@ private function cStrCHR(byval is_wstr as integer) as ASTNODE ptr
 		if( is_wstr = FALSE ) then
 			function = astNewVAR( symbAllocStrConst( zs, cnt ) )
 		else
-			function = astNewVAR( symbAllocWstrConst( ws, cnt ) )
+			dim as integer targetcnt
+			hUnescapeWTarget( ws, targetcnt )
+			function = astNewVAR( symbAllocWstrConst( ws, targetcnt ) )
 		end if
 	else
 		if( is_wstr ) then

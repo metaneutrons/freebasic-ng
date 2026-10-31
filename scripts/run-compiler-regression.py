@@ -48,6 +48,12 @@ def main() -> None:
         default=[],
         help="extra option passed to fbc; repeat for several options",
     )
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=120,
+        help="seconds the compiled regression may run before it fails",
+    )
     args = parser.parse_args()
 
     cmake = locate(args.cmake)
@@ -95,7 +101,17 @@ def main() -> None:
     )
     if not executable.is_file() and executable.with_suffix(".exe").is_file():
         executable = executable.with_suffix(".exe")
-    completed = subprocess.run([str(executable)], cwd=work_dir)
+    # A broken error path can re-enter its handler forever (#187), and the
+    # runtime turns SIGTERM into another runtime error.  subprocess.run()
+    # kills the program on timeout, which ends it either way.
+    try:
+        completed = subprocess.run(
+            [str(executable)], cwd=work_dir, timeout=args.timeout
+        )
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(
+            f"regression did not finish within {args.timeout:g} seconds"
+        ) from None
     if completed.returncode != args.expected_exit_code:
         raise RuntimeError(
             f"regression exited with {completed.returncode}, "

@@ -259,6 +259,54 @@ if(FB_BUILD_TESTS OR FB_BUILD_LEGACY_UNIT_TESTS OR
         fb_add_compiler_regression(error-handler-local-restore
             SOURCE test/cmake/error-handler-local-restore.bas
             FBC_FLAGS -ex -lang deprecated)
+        fb_add_compiler_regression(error-handler-goto-zero
+            SOURCE test/cmake/error-handler-goto-zero.bas
+            FBC_FLAGS -e
+            EXPECTED_EXIT_CODE 100)
+        fb_add_compiler_regression(array-bounds-exx-valid
+            SOURCE test/cmake/array-bounds-exx-valid.bas
+            FBC_FLAGS -exx)
+        fb_add_compiler_regression(array-bounds-exx-invalid
+            SOURCE test/cmake/array-bounds-exx-invalid.bas
+            FBC_FLAGS -exx
+            EXPECTED_EXIT_CODE 6)
+        fb_add_compiler_regression(null-pointer-exx-valid
+            SOURCE test/cmake/null-pointer-exx-valid.bas
+            FBC_FLAGS -exx)
+        fb_add_compiler_regression(null-pointer-exx-invalid
+            SOURCE test/cmake/null-pointer-exx-invalid.bas
+            FBC_FLAGS -exx
+            EXPECTED_EXIT_CODE 7)
+    endif()
+
+    # The error handler regressions again with gas64, which emits the handler
+    # landing sites itself (#187).  gas64 is qualified on Linux x86_64 only,
+    # like FB_NATIVE_COMPILER_BACKEND=gas64 above.
+    if(FB_BUILD_COMPILER AND FB_TARGET_OS STREQUAL "linux" AND
+       FB_TARGET_ARCH STREQUAL "x86_64")
+        fb_add_compiler_regression(error-check-handler-gas64
+            SOURCE test/cmake/error-check-handler.bas
+            FBC_FLAGS -e -gen gas64)
+        fb_add_compiler_regression(error-handler-frame-gas64
+            SOURCE test/cmake/error-handler-frame.bas
+            FBC_FLAGS -e -gen gas64)
+        fb_add_compiler_regression(error-handler-mutated-local-gas64
+            SOURCE test/cmake/error-handler-mutated-local.bas
+            FBC_FLAGS -e -gen gas64)
+        fb_add_compiler_regression(error-handler-resume-gas64
+            SOURCE test/cmake/error-handler-resume.bas
+            FBC_FLAGS -ex -lang deprecated -gen gas64)
+        fb_add_compiler_regression(error-handler-cross-resume-gas64
+            SOURCE test/cmake/error-handler-cross-resume.bas
+            FBC_FLAGS -ex -lang deprecated -gen gas64
+            EXPECTED_EXIT_CODE 5)
+        fb_add_compiler_regression(error-handler-local-restore-gas64
+            SOURCE test/cmake/error-handler-local-restore.bas
+            FBC_FLAGS -ex -lang deprecated -gen gas64)
+        fb_add_compiler_regression(error-handler-goto-zero-gas64
+            SOURCE test/cmake/error-handler-goto-zero.bas
+            FBC_FLAGS -e -gen gas64
+            EXPECTED_EXIT_CODE 100)
     endif()
 
     # Loading a shared library built by this compiler.  Kept to unix hosts:

@@ -59,16 +59,27 @@ the main thread. Graphics output drawn by a worker appears at the next
 main-thread presentation/poll operation.
 
 The hosted macOS smoke test injects synthetic AppKit input and verifies
-window/event translation for both standard and `-mt` graphics builds. Manual
-qualification still needs a real keyboard, mouse, Retina/non-Retina display,
-and both macOS architectures to check focus transitions, IME limitations,
-cursor behaviour and display scaling. Build
+window/event translation for both standard and `-mt` graphics builds on both
+macOS architectures. Focus transitions, IME limitations, cursor behaviour and
+display scaling need a manual check with a real keyboard, mouse and Retina and
+non-Retina displays. A release requires that check on Apple silicon. For
+1.25.0, the first stable release with the Cocoa driver, the manual check on a
+physical Intel Mac is deferred to
+[issue #182](https://github.com/metaneutrons/freebasic-ng/issues/182); for that
+architecture the hosted `darwin-x86_64` build, archive and link checks and the
+automated Cocoa smoke test remain mandatory. A run under Rosetta or on a hosted
+runner is not evidence for physical Intel hardware. Build
 `tests/gfx/cocoa-interactive.bas` with the staged `fbc` and run it once normally
-and once each with `fullscreen`, `borderless` and `floating`. Check that the
-four corner markers stay in the correct places, typed text matches the active
-keyboard layout within CP437, mouse coordinates start at the upper-left,
-button/wheel/focus/close events arrive, and C/P/T toggle cursor visibility,
-window position and title. Escape exits a borderless/fullscreen probe.
+and once each with `fullscreen`, `borderless` and `floating`, from a terminal.
+Each event type has its own row with a running count, so a burst of mouse
+movement cannot hide a key, button or focus event. Check that the four corner
+markers stay in the correct places, the text row matches the active keyboard
+layout within CP437, mouse coordinates start at the upper-left and agree with
+the polled `GETMOUSE` row, button, double-click, wheel, enter/leave, focus and
+close events arrive, and C/P/T toggle cursor visibility, window position and
+title as the state row shows. Escape exits a borderless/fullscreen probe. When
+the window closes, the probe prints its event counts and the typed text to the
+terminal for the qualification record.
 
 Mach-O differs from ELF in two ways that are visible in what `fbc` produces on
 macOS, so they are part of the platform contract rather than a property of one
@@ -111,6 +122,14 @@ AROS remains deferred to the later
 MorphOS M6 has a pinned SDK, a CMake runtime archive and a FreeBASIC
 link check in CI, recorded in
 [`cmake/toolchains/morphos-ppc.lock.json`](../cmake/toolchains/morphos-ppc.lock.json).
-That establishes neither execution nor process termination on MorphOS, so the
-target remains unqualified and is not published as supported.
+The repository also contains a
+[serial QEMU runtime harness](../test/morphos/qemu/README.md) for a private,
+hash-pinned MorphOS 3.20 base image. Its portable contract tests run in public
+CI. The completed MorphOS 3.20 execution, exact compiler/toolchain/image inputs,
+ordered success markers, normal exit and rejected non-zero counter-probe are
+recorded in the
+[qualification record](../test/morphos/qemu/QUALIFICATION.md). MorphOS is
+therefore a qualified developer-preview target SDK; it remains neither a Tier 1
+native host release nor a package-manager target. Future release qualification
+continues to require the private image on a documented local or private runner.
 Package publication to APT, Homebrew and the AUR is M2 work.

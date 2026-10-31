@@ -122,5 +122,37 @@ SUITE( fbc_tests.wstring_.wchr_ )
 		#endif
 	
 	END_TEST
+
+	TEST( astral_codepoint_target_width )
+
+		dim folded as wstring * 5 = "a" & wchr( &h1D11E ) & "b"
+		dim direct as wstring * 3 = wchr( &h1D11E )
+		dim bmp as wstring * 4 = "a" & wchr( &h20AC ) & "b"
+
+		#if sizeof( wstring ) = 2
+			CU_ASSERT_EQUAL( len( folded ), 4 )
+			CU_ASSERT_EQUAL( folded[0], &h0061 )
+			CU_ASSERT_EQUAL( folded[1], &hD834 )
+			CU_ASSERT_EQUAL( folded[2], &hDD1E )
+			CU_ASSERT_EQUAL( folded[3], &h0062 )
+			CU_ASSERT_EQUAL( len( direct ), 2 )
+			CU_ASSERT_EQUAL( direct[0], &hD834 )
+			CU_ASSERT_EQUAL( direct[1], &hDD1E )
+		#elseif sizeof( wstring ) = 4
+			CU_ASSERT_EQUAL( len( folded ), 3 )
+			CU_ASSERT_EQUAL( folded[0], &h0061 )
+			CU_ASSERT_EQUAL( folded[1], &h1D11E )
+			CU_ASSERT_EQUAL( folded[2], &h0062 )
+			CU_ASSERT_EQUAL( len( direct ), 1 )
+			CU_ASSERT_EQUAL( direct[0], &h1D11E )
+		#endif
+
+		'' Counter-probe: BMP values stay one code unit on both targets.
+		CU_ASSERT_EQUAL( len( bmp ), 3 )
+		CU_ASSERT_EQUAL( bmp[0], &h0061 )
+		CU_ASSERT_EQUAL( bmp[1], &h20AC )
+		CU_ASSERT_EQUAL( bmp[2], &h0062 )
+
+	END_TEST
 	
 END_SUITE

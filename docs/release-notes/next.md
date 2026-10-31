@@ -18,6 +18,28 @@ declare the X11 link dependencies needed for programs using `-fbgfx`; an
 existing installation should be upgraded as a complete package or versioned
 archive directory, not by copying only `fbc` over the old version.
 
+## macOS: native Cocoa graphics
+
+Graphics programs on macOS use a native Cocoa driver and no longer need
+XQuartz. `fbc` links them against the Cocoa and CoreGraphics frameworks itself.
+Windowed, borderless (`GFX_NO_FRAME`), always-on-top (`GFX_ALWAYS_ON_TOP`) and
+fullscreen screens work, as do keyboard, mouse, wheel, focus and close events.
+Fullscreen fills the main display without switching its display mode. On a
+Retina display, screen sizes and mouse coordinates are logical points, so a
+640x480 screen appears at the same size as on other displays.
+
+OpenGL screens, shaped windows and mouse confinement through `SETMOUSE` are not
+available. They fail with an illegal-function-call error instead of appearing to
+succeed. Text input covers the characters of code page 437, and there is no
+input-method (IME) composition. In `-mt` programs only the main thread may open,
+change or close a graphics screen. An `.xpm` icon passed to `fbc` has no effect
+with this driver. The details are in the
+[platform notes](https://github.com/metaneutrons/freebasic-ng/blob/main/docs/platform-support.md#macos-output-conventions).
+
+On Intel Macs the driver passes the automated build, link and window tests but
+has not yet been checked by hand on physical hardware; that check is tracked in
+[issue #182](https://github.com/metaneutrons/freebasic-ng/issues/182).
+
 ## macOS archives target macOS 11.0
 
 The compiler, runtime startup object and native Cocoa graphics driver in the
@@ -69,10 +91,45 @@ failed to compile wherever clang translates the generated C: on macOS, and on
 the `win32-aarch64` host, whose CLANGARM64 toolchain ships clang under the `gcc`
 name. `-e` was not buildable on that host before this release.
 
-A handler installed with `ON ERROR GOTO` and reached from another procedure
-still reads its locals through the wrong frame pointer. That defect is
-independent of this change and is tracked in
-[issue #159](https://github.com/metaneutrons/freebasic-ng/issues/159).
+## `-exx` bounds and null checks compile with AppleClang 21
+
+AppleClang 21 rejects a computed goto when the current C function contains no
+address-of-label expression. Array bounds and null-pointer checks generated
+exactly that form, so an otherwise valid program built with `-exx` failed during
+C compilation on current macOS. The C backends now call the returned legacy
+error-handler function pointer instead; current `ON ERROR` handlers continue to
+use their per-procedure transfer context. Assembly backends are unchanged.
+
+Both sides are release-tested: valid array and pointer access must run, while
+an out-of-bounds access and a null dereference must still end with runtime
+errors 6 and 7 respectively.
+
+## `ON ERROR GOTO` handlers run in their own procedure
+
+A handler installed with `ON ERROR GOTO` is often reached from an error raised
+in another procedure, typically a module-level handler for an error inside a
+`SUB` or `FUNCTION`. Earlier releases jumped to such a handler without leaving
+the failing procedure. The handler then read its own variables through the
+wrong stack frame and saw wrong values, and optimized builds could crash or
+hang. The handler now runs in the procedure that installed it, and its
+variables hold the values they had when the error occurred.
+
+`RESUME` and `RESUME NEXT` continue in the procedure where the error occurred,
+so they need a handler in that procedure, typically one installed with
+`ON LOCAL ERROR GOTO`. From a handler in another procedure they end the program
+with runtime error 5 (illegal resume), because the failing procedure has
+already been left.
+
+## MorphOS has a qualified developer-preview runtime harness
+
+The pinned MorphOS/PowerPC cross-toolchain now builds and links a FreeBASIC
+smoke program that has been executed under MorphOS 3.20 on the repository QEMU
+harness. The qualification record pins the compiler, cross-toolchain, QEMU,
+private guest image and executable, and records the ordered success markers and
+a rejected non-zero counter-probe.
+
+This is target-SDK evidence, not a MorphOS native compiler release. The guest
+image remains private and is not part of any release asset.
 
 <!-- freebasic-ng:public-release-notes:end -->
 
