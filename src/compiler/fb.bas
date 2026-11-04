@@ -1357,13 +1357,11 @@ sub fbCompile _
 	env.inf.format = hCheckFileFormat( env.inf.num )
 
 	''
-	'' -fsyntax: no output file is created at all, so the backend is never
-	'' opened.  The front end (parsing and semantic checks) runs as usual.
-	if( not fbGetOption( FB_COMPOPT_SYNTAXONLY ) ) then
-		if( irEmitBegin( ) = FALSE ) then
-			errReportEx( FB_ERRMSG_FILEACCESSERROR, env.outf.name, -1 )
-			exit sub
-		end if
+	'' -fsyntax: the backend runs without an output file, because procedure
+	'' and variable handling in the front end relies on its state.
+	if( irEmitBegin( ) = FALSE ) then
+		errReportEx( FB_ERRMSG_FILEACCESSERROR, env.outf.name, -1 )
+		exit sub
 	end if
 
 	if( fbGetOption( FB_COMPOPT_PPONLY ) ) then
@@ -1398,9 +1396,7 @@ sub fbCompile _
 	end if
 
 	'' save
-	if( not fbGetOption( FB_COMPOPT_SYNTAXONLY ) ) then
-		irEmitEnd( )
-	end if
+	irEmitEnd( )
 
 	if( env.ppfile_num > 0 ) then
 		close #env.ppfile_num
