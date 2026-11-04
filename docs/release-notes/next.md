@@ -143,6 +143,16 @@ When standard output was a pipe or a file, `PRINT` of a `WSTRING` wrote the raw
 writes UTF-8, as it does on a terminal. A script that read the old raw output
 has to be adapted.
 
+## `-fsyntax` checks a program without generating code
+
+`fbc -fsyntax program.bas` parses and type-checks a program and stops there. It
+writes no `.o`, `.c`, `.asm` or executable, exits with 0 when the program is
+valid and with 1 when it is not, and reports errors in the usual
+`file(line): error N: text` form on stderr. It follows `#include` and runs the
+same checks as a normal compile, so it suits an editor that checks a file while
+it is typed. The check does not look at the assembler or the linker, so errors
+that only show up there are not reported.
+
 ## MorphOS has a qualified developer-preview runtime harness
 
 The pinned MorphOS/PowerPC cross-toolchain now builds and links a FreeBASIC

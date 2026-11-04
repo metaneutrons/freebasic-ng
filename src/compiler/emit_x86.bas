@@ -501,7 +501,9 @@ private sub outEx _
 		bytes = len( *s )
 	end if
 
-	if( put( #env.outf.num, , *s, bytes ) = 0 ) then
+	if( env.outf.num <> 0 ) then
+		if( put( #env.outf.num, , *s, bytes ) = 0 ) then
+		end if
 	end if
 
 end sub
@@ -7570,13 +7572,16 @@ private function _open _
 	( _
 	) as integer
 
-	if( hFileExists( env.outf.name ) ) then
-		kill env.outf.name
-	end if
+	'' -fsyntax creates no output file, the backend still sets up its state
+	if( fbGetOption( FB_COMPOPT_SYNTAXONLY ) = FALSE ) then
+		if( hFileExists( env.outf.name ) ) then
+			kill env.outf.name
+		end if
 
-	env.outf.num = freefile
-	if( open( env.outf.name, for binary, access read write, as #env.outf.num ) <> 0 ) then
-		return FALSE
+		env.outf.num = freefile
+		if( open( env.outf.name, for binary, access read write, as #env.outf.num ) <> 0 ) then
+			return FALSE
+		end if
 	end if
 
 	'' header
@@ -7609,11 +7614,13 @@ private sub _close( )
 	edbgEmitFooter( )
 
 	''
-	if( close( #env.outf.num ) <> 0 ) then
-		'' ...
-	end if
+	if( env.outf.num <> 0 ) then
+		if( close( #env.outf.num ) <> 0 ) then
+			'' ...
+		end if
 
-	env.outf.num = 0
+		env.outf.num = 0
+	end if
 
 end sub
 

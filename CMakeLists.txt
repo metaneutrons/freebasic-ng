@@ -279,6 +279,60 @@ if(FB_BUILD_TESTS OR FB_BUILD_LEGACY_UNIT_TESTS OR
             EXPECTED_EXIT_CODE 7)
     endif()
 
+    # Registers the -fsyntax checks for one backend.  They run the installed
+    # compiler without generating code, so they need no link step.  The
+    # backend keeps state that procedure parsing relies on, which makes each
+    # backend a separate case.
+    function(fb_add_fsyntax_test name)
+        cmake_parse_arguments(_fbsyn "" "" "FBC_FLAGS" ${ARGN})
+
+        find_package(Python3 COMPONENTS Interpreter REQUIRED)
+
+        set(_runner "${CMAKE_SOURCE_DIR}/scripts/run-fsyntax-test.py")
+        set(_script "${CMAKE_SOURCE_DIR}/test/cmake/fsyntax.sh")
+        set(_cmake "${CMAKE_COMMAND}")
+        set(_build_dir "${CMAKE_BINARY_DIR}")
+        set(_install_prefix "${CMAKE_BINARY_DIR}/tests/${name}/stage")
+
+        if(WIN32)
+            file(RELATIVE_PATH _runner "${CMAKE_BINARY_DIR}" "${_runner}")
+            file(RELATIVE_PATH _script "${CMAKE_BINARY_DIR}" "${_script}")
+            set(_cmake cmake)
+            set(_build_dir .)
+            set(_install_prefix "tests/${name}/stage")
+        endif()
+
+        set(_flag_arguments)
+        foreach(_flag IN LISTS _fbsyn_FBC_FLAGS)
+            list(APPEND _flag_arguments "--fbc-flag=${_flag}")
+        endforeach()
+
+        add_test(
+            NAME "compiler.${name}"
+            COMMAND "${Python3_EXECUTABLE}"
+                "${_runner}"
+                --cmake "${_cmake}"
+                --build-dir "${_build_dir}"
+                --install-prefix "${_install_prefix}"
+                --script "${_script}"
+                ${_flag_arguments}
+        )
+        set_tests_properties("compiler.${name}" PROPERTIES
+            WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
+    endfunction()
+
+    if(FB_BUILD_COMPILER)
+        fb_add_fsyntax_test(fsyntax)
+        # gas64 is qualified on Linux x86_64 and the original GAS backend on
+        # Linux x86 only, like the native compiler backends above.
+        if(FB_TARGET_OS STREQUAL "linux" AND FB_TARGET_ARCH STREQUAL "x86_64")
+            fb_add_fsyntax_test(fsyntax-gas64 FBC_FLAGS -gen gas64)
+        endif()
+        if(FB_TARGET_OS STREQUAL "linux" AND FB_TARGET_ARCH STREQUAL "x86")
+            fb_add_fsyntax_test(fsyntax-gas FBC_FLAGS -gen gas)
+        endif()
+    endif()
+
     # The error handler regressions again with gas64, which emits the handler
     # landing sites itself (#187).  gas64 is qualified on Linux x86_64 only,
     # like FB_NATIVE_COMPILER_BACKEND=gas64 above.

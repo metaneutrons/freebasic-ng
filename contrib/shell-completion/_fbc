@@ -44,6 +44,7 @@ _fbc() {
         "-forcelang[override #lang statements in source code]:dialect:(${lang_dialects[*]})" \
         '-fpmode[select floating-point math accuracy/speed]:mode:(fast precise)' \
         '-fpu[set target FPU]:fpu:(x87 sse)' \
+        '-fsyntax[parse and type-check only, generate no output]' \
         '-g[add debug info, enable __FB_DEBUG__, and enable assert()]' \
         "-gen[select code generation backend]:backend:(${gen_backends[*]})" \
         '(--help -help)'{--help,-help}'[show help output]' \
