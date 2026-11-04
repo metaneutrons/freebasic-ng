@@ -120,6 +120,29 @@ so they need a handler in that procedure, typically one installed with
 with runtime error 5 (illegal resume), because the failing procedure has
 already been left.
 
+## `CIRCLE` leaves the graphics cursor at the center
+
+`CIRCLE` documents that the graphics cursor ends up at the supplied center.
+With a negative start or end angle, which draws radius lines, the cursor stayed
+at the end of the arc instead, so a following `LINE STEP` or `PSET STEP` started
+from the wrong place. The cursor is at the center in every case now. A program
+that relied on the old position after such a `CIRCLE` has to give absolute
+coordinates.
+
+## `ALIAS` decodes escape sequences in string literals
+
+`alias !"\65"` named the symbol `\65` instead of `A`, which the C backend
+rejected as an invalid identifier. Escaped alias strings are decoded the same
+way as other escaped string literals now. Plain and `$"..."` literals are
+unchanged.
+
+## Redirected `WSTRING` output is UTF-8 on Unix-like systems
+
+When standard output was a pipe or a file, `PRINT` of a `WSTRING` wrote the raw
+`wchar_t` buffer, which is four bytes per character on Linux and macOS. It now
+writes UTF-8, as it does on a terminal. A script that read the old raw output
+has to be adapted.
+
 ## MorphOS has a qualified developer-preview runtime harness
 
 The pinned MorphOS/PowerPC cross-toolchain now builds and links a FreeBASIC
