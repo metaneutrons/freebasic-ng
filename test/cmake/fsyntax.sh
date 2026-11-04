@@ -10,6 +10,10 @@
 #   * follow #include
 #   * still report an undefined label
 #
+# The backend keeps state that procedures and variables rely on while they are
+# parsed, so the checks also cover procedure bodies.  Pass the backend in FBC
+# to run the suite against it, for example FBC="fbc -gen gas64".
+#
 # Usage:  FBC=".../bin/fbc -i .../inc" ./fsyntax.sh
 #
 # The directory is created fresh under the system temp dir and removed at the
@@ -51,6 +55,59 @@ if [ -z "$(ls | grep -v '\.bas$')" ]; then
 	ok "valid program creates no output files"
 else
 	no "valid program creates no output files: $(ls | grep -v '\.bas$')"
+fi
+
+# --- procedures: parsing a body drives the backend ---------------------------
+cat > procs.bas <<'EOF'
+type T
+	a as integer
+	s as string
+end type
+
+declare function f( byval x as integer ) as integer
+
+function f( byval x as integer ) as integer
+	dim as T t
+	dim as double d = x * 2.5
+	t.a = x
+	t.s = "hi" & x
+	for i as integer = 0 to 3
+		d += i
+	next
+	return int( d ) + t.a + len( t.s )
+end function
+
+sub g( )
+	static as integer a(10)
+	a(1) = f( 2 )
+	print a(1)
+end sub
+
+g( )
+EOF
+
+if $FBC -fsyntax procs.bas >/dev/null 2>&1; then
+	ok "procedures with locals, UDTs and strings exit 0"
+else
+	no "procedures with locals, UDTs and strings exit 0"
+fi
+
+if [ -z "$(ls | grep -v '\.bas$')" ]; then
+	ok "procedures create no output files"
+else
+	no "procedures create no output files: $(ls | grep -v '\.bas$')"
+fi
+
+cat > procbad.bas <<'EOF'
+sub g( )
+	dim as integer x = "a" +
+end sub
+EOF
+
+if $FBC -fsyntax procbad.bas 2>&1 | grep -q 'procbad\.bas(2)'; then
+	ok "error inside a procedure reports the line"
+else
+	no "error inside a procedure reports the line"
 fi
 
 # --- a syntax error --------------------------------------------------------
