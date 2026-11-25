@@ -333,7 +333,7 @@ jobs:
           output-file: dist/freebasic-ng-${{ needs.metadata.outputs.version }}-${{ matrix.name }}.${{ matrix.extension }}.spdx.json
           upload-artifact: false
 
-      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
         if: matrix.name != 'win32-aarch64'
         with:
           cosign-release: v3.1.1
@@ -519,7 +519,7 @@ jobs:
           output-file: dist/freebasic-ng_${{ needs.metadata.outputs.version }}-1_${{ matrix.architecture }}.deb.spdx.json
           upload-artifact: false
 
-      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
         with:
           cosign-release: v3.1.1
 
@@ -566,7 +566,7 @@ jobs:
 
       # Cosign does not publish a Windows ARM64 binary.  The Windows ARM archive
       # itself is still built and attested on Windows; sign it here on Linux.
-      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
         with:
           cosign-release: v3.1.1
 
@@ -718,7 +718,7 @@ jobs:
           name: release-candidate
           path: candidate
 
-      - uses: Homebrew/actions/setup-homebrew@d482da0e602890d3160aade42e72c8556103bf04 # 2026.10.26.1
+      - uses: Homebrew/actions/setup-homebrew@63a2d4d8d4193eab3e62b1b782ff3ab8408f5b29 # 2026.11.09.1
         with:
           core: false
           cask: false
