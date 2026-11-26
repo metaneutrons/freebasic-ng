@@ -32,7 +32,10 @@ jobs:
 
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libncurses-dev libffi-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build libncurses-dev libffi-dev \
+            libx11-dev libxext-dev libxpm-dev libxrandr-dev libxrender-dev libgpm-dev
 
       - name: Install Windows build dependencies
         if: runner.os == 'Windows'
