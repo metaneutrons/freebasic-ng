@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.26.1](https://github.com/metaneutrons/freebasic-ng/compare/v1.26.0...v1.26.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **release:** wait for Homebrew formula qualification ([#219](https://github.com/metaneutrons/freebasic-ng/issues/219)) ([1bc4d1a](https://github.com/metaneutrons/freebasic-ng/commit/1bc4d1a69f665f189c16352327ca17e271f38cf2))
+
 ## [1.26.0](https://github.com/metaneutrons/freebasic-ng/compare/v1.25.2...v1.26.0) (2026-11-26)
 
 
