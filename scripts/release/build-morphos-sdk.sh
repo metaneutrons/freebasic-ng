@@ -17,9 +17,13 @@ stage="$work/stage/$sdk_name"
 unpacked="$work/unpacked/$sdk_name"
 runtime=lib/freebasic/morphos-powerpc/libfb.a
 
+# The MorphOS binutils can default to recording each object file's metadata.
 cmake -S "$project_dir" -B "$work/build" -G Ninja \
   -DCMAKE_TOOLCHAIN_FILE="$project_dir/cmake/toolchains/morphos-ppc.cmake" \
   -DMORPHOS_GCC_ROOT="$MORPHOS_GCC_ROOT" -DCMAKE_BUILD_TYPE=Release \
+  '-DCMAKE_C_ARCHIVE_CREATE=<CMAKE_AR> qcD <TARGET> <LINK_FLAGS> <OBJECTS>' \
+  '-DCMAKE_C_ARCHIVE_APPEND=<CMAKE_AR> qD <TARGET> <LINK_FLAGS> <OBJECTS>' \
+  '-DCMAKE_C_ARCHIVE_FINISH=<CMAKE_RANLIB> -D <TARGET>' \
   -DCMAKE_INSTALL_LIBDIR=lib -DFB_BUILD_COMPILER=OFF -DFB_BUILD_GFXLIB=OFF \
   -DFB_DISABLE_X11=ON -DFB_DISABLE_GPM=ON -DFB_DISABLE_FFI=ON -DFB_DISABLE_OPENGL=ON
 cmake --build "$work/build"
