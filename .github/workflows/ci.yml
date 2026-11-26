@@ -23,7 +23,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Test CI scope and documentation validators
+      - name: Test workflow helpers
         run: python3 -B -m unittest discover -s tests/workflow -p 'test_*.py'
 
       - name: Classify the change set
