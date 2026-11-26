@@ -82,7 +82,7 @@ _fbc() {
     if [[ "$cur" == -* ]]; then
         local opts="-a -arch -asm -b -buildprefix -c -C -d -dll -dylib
             -e -earray -eassert -edebug -edebuginfo -elocation -enullptr -eunwind
-            -entry -ex -exx -export -fbgfx -forcelang -fpmode -fpu -g -gen
+            -entry -ex -exx -export -fbgfx -forcelang -fpmode -fpu -fsyntax -g -gen
             --help -help -i -include -l -lang -lib -m -map -maxerr -mt
             -nodeflibs -noerrline -nolib -noobjinfo -nostrip -o -O -p -pic
             -pp -prefix -print -profile -r -rr -R -RR -s -showincludes

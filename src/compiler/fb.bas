@@ -598,6 +598,7 @@ sub fbGlobalInit()
 	'' default settings
 	env.clopt.outtype       = FB_DEFAULT_OUTTYPE
 	env.clopt.pponly        = FALSE
+	env.clopt.syntaxonly    = FALSE
 
 	env.clopt.backend       = FB_DEFAULT_BACKEND
 	env.clopt.target        = FB_DEFAULT_TARGET
@@ -673,6 +674,8 @@ sub fbSetOption( byval opt as integer, byval value as integer )
 		env.clopt.outtype = value
 	case FB_COMPOPT_PPONLY
 		env.clopt.pponly = value
+	case FB_COMPOPT_SYNTAXONLY
+		env.clopt.syntaxonly = value
 
 	case FB_COMPOPT_BACKEND
 		env.clopt.backend = value
@@ -792,6 +795,8 @@ function fbGetOption( byval opt as integer ) as integer
 		function = env.clopt.outtype
 	case FB_COMPOPT_PPONLY
 		function = env.clopt.pponly
+	case FB_COMPOPT_SYNTAXONLY
+		function = env.clopt.syntaxonly
 
 	case FB_COMPOPT_BACKEND
 		function = env.clopt.backend
@@ -1352,6 +1357,8 @@ sub fbCompile _
 	env.inf.format = hCheckFileFormat( env.inf.num )
 
 	''
+	'' -fsyntax: the backend runs without an output file, because procedure
+	'' and variable handling in the front end relies on its state.
 	if( irEmitBegin( ) = FALSE ) then
 		errReportEx( FB_ERRMSG_FILEACCESSERROR, env.outf.name, -1 )
 		exit sub

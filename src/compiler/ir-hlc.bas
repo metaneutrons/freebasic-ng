@@ -1341,13 +1341,16 @@ private sub hMaybeEmitProcExport( byval proc as FBSYMBOL ptr )
 end sub
 
 private function _emitBegin( ) as integer
-	if( hFileExists( env.outf.name ) ) then
-		kill env.outf.name
-	end if
+	'' -fsyntax creates no output file, the backend still sets up its state
+	if( fbGetOption( FB_COMPOPT_SYNTAXONLY ) = FALSE ) then
+		if( hFileExists( env.outf.name ) ) then
+			kill env.outf.name
+		end if
 
-	env.outf.num = freefile
-	if( open( env.outf.name, for binary, access read write, as #env.outf.num ) <> 0 ) then
-		return FALSE
+		env.outf.num = freefile
+		if( open( env.outf.name, for binary, access read write, as #env.outf.num ) <> 0 ) then
+			return FALSE
+		end if
 	end if
 
 	ctx.section = -1
@@ -1465,15 +1468,19 @@ private sub _emitEnd( )
 
 	'' Emit & close the main section
 	if( ctx.sections(0).old = FALSE ) then
-		if( put( #env.outf.num, , ctx.sections(0).text ) <> 0 ) then
+		if( env.outf.num <> 0 ) then
+			if( put( #env.outf.num, , ctx.sections(0).text ) <> 0 ) then
+			end if
 		end if
 	end if
 	sectionEnd( )
 
-	if( close( #env.outf.num ) <> 0 ) then
-		'' ...
+	if( env.outf.num <> 0 ) then
+		if( close( #env.outf.num ) <> 0 ) then
+			'' ...
+		end if
+		env.outf.num = 0
 	end if
-	env.outf.num = 0
 
 	assert( ctx.sectiongosublevel = 0 )
 	assert( ctx.section = -1 )
