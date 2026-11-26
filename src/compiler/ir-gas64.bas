@@ -6634,7 +6634,7 @@ private sub hdocall(byval proc as FBSYMBOL ptr,byref pname as string,byref first
 	dim as IRVREG ptr tempo1
 	dim as FB_STRUCT_INREG retin2regs
 
-	''if hdocall ever becomes reentrant these three globals must be saved/restored around the recursive call.	
+	''if hdocall ever becomes reentrant these three globals must be saved/restored around the recursive call.
 	pushnbstr=0
 	pushsize=0
 	pushpad=0
