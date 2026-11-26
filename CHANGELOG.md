@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.26.0](https://github.com/metaneutrons/freebasic-ng/compare/v1.25.2...v1.26.0) (2026-11-26)
+
+
+### Features
+
+* add -fsyntax, a parse-and-type-check mode ([#212](https://github.com/metaneutrons/freebasic-ng/issues/212)) ([89533cc](https://github.com/metaneutrons/freebasic-ng/commit/89533ccce26927842cca3b71a113d85181f2d7f3))
+* **release:** publish the MorphOS PowerPC target SDK ([#215](https://github.com/metaneutrons/freebasic-ng/issues/215)) ([cfb1de4](https://github.com/metaneutrons/freebasic-ng/commit/cfb1de4d3c1903ab0e4280c37ada93bf40261124))
+
+
+### Bug Fixes
+
+* **ci:** scope documentation pushes ([5e00c9c](https://github.com/metaneutrons/freebasic-ng/commit/5e00c9cb50c727a3f0f5a01d72cf168b63b39d59))
+* **ci:** scope documentation-only pull requests ([eade2f5](https://github.com/metaneutrons/freebasic-ng/commit/eade2f586316769df0e85ee6e657e44c27b1a1e6))
+* **compiler:** fold WChr literals for target WChar width ([#208](https://github.com/metaneutrons/freebasic-ng/issues/208)) ([2f9bde5](https://github.com/metaneutrons/freebasic-ng/commit/2f9bde5abf0da881ea1c033b467862875a422934)), closes [#207](https://github.com/metaneutrons/freebasic-ng/issues/207)
+* **compiler:** release temporary WSTRING results ([#216](https://github.com/metaneutrons/freebasic-ng/issues/216)) ([de9dc07](https://github.com/metaneutrons/freebasic-ng/commit/de9dc07fb0ec42810d609aabeb1b348ad5765980))
+* **gas64:** backport x86-64 ABI and register fixes ([#218](https://github.com/metaneutrons/freebasic-ng/issues/218)) ([bb4773b](https://github.com/metaneutrons/freebasic-ng/commit/bb4773b8dc2e07975d2222c9646e5441253bda8c))
+* integrate reviewed upstream patches 484-503 ([#210](https://github.com/metaneutrons/freebasic-ng/issues/210)) ([03ad0fe](https://github.com/metaneutrons/freebasic-ng/commit/03ad0fe028fc4cef6768d8a18be4f41a999e2dd9))
+* **readme:** make badges render reliably ([d04b681](https://github.com/metaneutrons/freebasic-ng/commit/d04b681d328f9b63ab3030be71eedab53a4e23ff))
+* **tests:** normalize warning output with BSD sed ([#217](https://github.com/metaneutrons/freebasic-ng/issues/217)) ([d5bb3ec](https://github.com/metaneutrons/freebasic-ng/commit/d5bb3ec2e693b214f358c9ae28f9a64cc5b4f7a7))
+
 ## [1.25.2](https://github.com/metaneutrons/freebasic-ng/compare/v1.25.1...v1.25.2) (2026-10-29)
 
 
