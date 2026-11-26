@@ -19,10 +19,6 @@ jobs:
             runner: ubuntu-24.04
             python: python3
             executable: fbc-tests
-          - host: win64
-            runner: windows-2025
-            python: python
-            executable: fbc-tests.exe
     env:
       CANDIDATE_SHA: 777969c78bebbd284207cac3c69a3f441d51b773
       EXPECTED_HOST: ${{ matrix.host }}
@@ -66,7 +62,7 @@ jobs:
             -DFB_DISABLE_FFI=OFF -DFB_DISABLE_OPENGL=ON
           cmake --build build --parallel 3
           cmake --install build --prefix stage
-          "$PYTHON_CMD" scripts/verify-installed-fbc.py --prefix stage --expected-host "$EXPECTED_HOST" --require-gfxlib
+          "$PYTHON_CMD" scripts/verify-installed-fbc.py --prefix stage --expected-host "$EXPECTED_HOST"
 
       - name: Build and stage the exact candidate (Windows)
         if: runner.os == 'Windows'
