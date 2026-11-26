@@ -1,29 +1,21 @@
 name: Qualify upstream gas64 patch
 on:
   push:
-    branches: [fix/qualify-gas64-512]
+    branches: [fix/qualify-linux-gas64-512]
 
 permissions:
   contents: read
 
 jobs:
   gas64:
-    name: gas64 (${{ matrix.host }})
-    runs-on: ${{ matrix.runner }}
+    name: gas64 (linux-x86_64)
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - host: linux-x86_64
-            runner: ubuntu-24.04
-            python: python3
-            executable: fbc-tests
     env:
       CANDIDATE_SHA: 777969c78bebbd284207cac3c69a3f441d51b773
-      EXPECTED_HOST: ${{ matrix.host }}
-      PYTHON_CMD: ${{ matrix.python }}
-      TEST_EXECUTABLE: ${{ matrix.executable }}
+      EXPECTED_HOST: linux-x86_64
+      PYTHON_CMD: python3
+      TEST_EXECUTABLE: fbc-tests
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -31,29 +23,12 @@ jobs:
           persist-credentials: false
 
       - name: Install Linux build dependencies
-        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build libncurses-dev libffi-dev \
             libx11-dev libxext-dev libxpm-dev libxrandr-dev libxrender-dev libgpm-dev
 
-      - name: Install Windows build dependencies
-        if: runner.os == 'Windows'
-        uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e
-        with:
-          msystem: MINGW64
-          update: true
-          install: >-
-            mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-ninja
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-libffi
-            git
-            make
-            python
-
       - name: Build and stage the exact candidate (Linux)
-        if: runner.os == 'Linux'
         shell: bash
         run: |
           set -euo pipefail
@@ -67,58 +42,8 @@ jobs:
           cmake --install build --prefix stage
           "$PYTHON_CMD" scripts/verify-installed-fbc.py --prefix stage --expected-host "$EXPECTED_HOST"
 
-      - name: Build and stage the exact candidate (Windows)
-        if: runner.os == 'Windows'
-        shell: msys2 {0}
-        run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
-          "$PYTHON_CMD" scripts/check-version.py
-          "$PYTHON_CMD" scripts/fetch-bootstrap-seed.py --target "$EXPECTED_HOST" --cache-dir build/seed-check
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
-            -DFB_BUILD_GFXLIB=ON -DFB_DISABLE_X11=ON -DFB_DISABLE_GPM=ON \
-            -DFB_DISABLE_FFI=OFF -DFB_DISABLE_OPENGL=ON
-          cmake --build build --parallel 3
-          cmake --install build --prefix stage
-          "$PYTHON_CMD" scripts/verify-installed-fbc.py --prefix stage --expected-host "$EXPECTED_HOST" --require-gfxlib
-
       - name: Run the full unit suite with the gas64 backend (Linux)
-        if: runner.os == 'Linux'
         shell: bash
-        run: |
-          set -euo pipefail
-          cd build
-          "$PYTHON_CMD" ../scripts/run-legacy-unit-tests.py \
-            --cmake cmake --make make --build-dir . \
-            --install-prefix gas64/stage --source-tests-dir ../tests --source-include-dir ../inc \
-            --work-dir gas64/work --log gas64/unit-tests.log --fbc-flag=-gen --fbc-flag=gas64
-          cd gas64/work/tests
-          "./$TEST_EXECUTABLE" --brief-summary --xml results.xml
-          "$PYTHON_CMD" - <<'PYTHON'
-          import xml.etree.ElementTree as ET
-
-          report = ET.parse("results.xml")
-          expected = (
-              "gas64_divmod_rbx",
-              "gas64_arg_byte_short",
-              "udt_result_regs_store",
-              "gas64_store_reload_xmm",
-          )
-          for name in expected:
-              matching = [
-                  suite for suite in report.iter("testsuite")
-                  if suite.get("name", "").lower().endswith("." + name)
-              ]
-              assert len(matching) == 1, f"Missing or duplicate suite {name}"
-              suite = matching[0]
-              count = int(suite.get("tests"))
-              assert count > 0 and int(suite.get("failures")) == 0, suite.attrib
-              print(f"{name}: {count} tests passed")
-          PYTHON
-
-      - name: Run the full unit suite with the gas64 backend (Windows)
-        if: runner.os == 'Windows'
-        shell: msys2 {0}
         run: |
           set -euo pipefail
           cd build
@@ -154,7 +79,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: gas64-${{ matrix.host }}
+          name: gas64-linux-x86_64
           path: |
             build/gas64/unit-tests.log
             build/gas64/work/tests/results.xml
