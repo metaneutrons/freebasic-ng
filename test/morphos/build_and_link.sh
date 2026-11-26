@@ -37,9 +37,13 @@ BASENAME="$(basename "$INPUT" .bas)"
 command cp "$INPUT" "$WORK_DIR/$BASENAME.bas"
 
 echo "=== FreeBASIC-NG -> MorphOS/PowerPC ==="
+include_flags=()
+if [[ -n "${FB_MORPHOS_INCLUDE:-}" ]]; then
+  include_flags=(-i "$FB_MORPHOS_INCLUDE")
+fi
 (
   cd "$WORK_DIR"
-  "$FBC" -gen gcc -r -m "$BASENAME" -target morphos -arch powerpc "$BASENAME.bas"
+  "$FBC" -gen gcc -r -m "$BASENAME" -target morphos -arch powerpc "${include_flags[@]}" "$BASENAME.bas"
 )
 
 "$MORPHOS_CC" -noixemul -mcpu=powerpc \

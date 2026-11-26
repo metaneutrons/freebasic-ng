@@ -129,7 +129,9 @@ CI. The completed MorphOS 3.20 execution, exact compiler/toolchain/image inputs,
 ordered success markers, normal exit and rejected non-zero counter-probe are
 recorded in the
 [qualification record](../test/morphos/qemu/QUALIFICATION.md). MorphOS is
-therefore a qualified developer-preview target SDK; it remains neither a Tier 1
-native host release nor a package-manager target. Future release qualification
-continues to require the private image on a documented local or private runner.
-Package publication to APT, Homebrew and the AUR is M2 work.
+therefore a qualified developer-preview target. The release workflow builds
+the [FreeBASIC cross-compilation SDK](morphos-sdk.md) as
+`freebasic-ng-<version>-morphos-powerpc-sdk.tar.xz` and verifies that the
+extracted SDK links a MorphOS executable. GitHub Releases carries the
+archive, its signature and SBOM, and the signed checksum inventory.
+Runtime execution uses the private image on a documented local or private runner.
