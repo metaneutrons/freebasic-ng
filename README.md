@@ -103,7 +103,7 @@ the trust chain, cache and offline reproduction procedure.
 | macOS | Intel, Apple silicon | Tier 1 host | macOS 11+, native Cocoa/CoreGraphics; no XQuartz |
 | Windows | x86_64, ARM64 | Tier 1 host | Native compiler, runtime and graphics archives |
 | AmigaOS 3 | m68k | Developer-preview target | Cross-built SDK with emulator runtime evidence |
-| MorphOS | PowerPC | Developer-preview target | Cross-built SDK with MorphOS 3.20 runtime evidence |
+| MorphOS | PowerPC | Developer-preview target | [Downloadable cross-compilation SDK](docs/morphos-sdk.md) with MorphOS 3.20 runtime evidence |
 | AROS | — | Deferred | Qualification follows stable `aros-toolchains` and `aros-tools` inputs |
 
 Windowed, borderless, always-on-top and fullscreen graphics modes are qualified

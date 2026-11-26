@@ -1,0 +1,50 @@
+name: Build the MorphOS PowerPC target SDK
+description: Cross-build the FreeBASIC runtime and link a program using the release archive
+outputs:
+  archive:
+    description: Path to the qualified target SDK archive
+    value: ${{ steps.package.outputs.archive }}
+runs:
+  using: composite
+  steps:
+    - name: Load pinned MorphOS toolchain inputs
+      shell: bash
+      run: python3 scripts/verify-morphos-ppc-toolchain.py --github-env "$GITHUB_ENV"
+
+    - name: Install native build dependencies
+      shell: bash
+      run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libncurses-dev
+
+    - name: Provision pinned MorphOS toolchain
+      shell: bash
+      run: |
+        set -euo pipefail
+        docker pull "$MORPHOS_GCC_IMAGE"
+        container_id="$(docker create "$MORPHOS_GCC_IMAGE")"
+        trap 'docker rm "$container_id"' EXIT
+        sudo mkdir -p /opt/ppc-morphos
+        sudo docker cp "$container_id":/opt/ppc-morphos/. /opt/ppc-morphos
+        python3 scripts/verify-morphos-ppc-toolchain.py --verify-installed
+
+    - name: Build native C producer
+      shell: bash
+      run: |
+        set -euo pipefail
+        cmake -S . -B host-build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+          -DFB_BUILD_GFXLIB=OFF -DFB_DISABLE_X11=ON -DFB_DISABLE_GPM=ON \
+          -DFB_DISABLE_FFI=ON -DFB_DISABLE_OPENGL=ON
+        cmake --build host-build --target fbc
+
+    - name: Package and qualify the MorphOS SDK
+      id: package
+      shell: bash
+      env:
+        MORPHOS_GCC_ROOT: /opt/ppc-morphos
+        FBC: ${{ github.workspace }}/host-build/src/compiler/fbc
+      run: |
+        set -euo pipefail
+        version=$(sed -nE 's/^FBVERSION[[:space:]]*:=[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+)$/\1/p' version.mk)
+        [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+        archive="dist/freebasic-ng-${version}-morphos-powerpc-sdk.tar.xz"
+        bash scripts/release/build-morphos-sdk.sh "$archive"
+        printf 'archive=%s\n' "$archive" >> "$GITHUB_OUTPUT"

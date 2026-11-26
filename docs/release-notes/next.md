@@ -153,7 +153,7 @@ same checks as a normal compile, so it suits an editor that checks a file while
 it is typed. The check does not look at the assembler or the linker, so errors
 that only show up there are not reported.
 
-## MorphOS has a qualified developer-preview runtime harness
+## MorphOS PowerPC cross-compilation SDK
 
 The pinned MorphOS/PowerPC cross-toolchain now builds and links a FreeBASIC
 smoke program that has been executed under MorphOS 3.20 on the repository QEMU
@@ -161,8 +161,11 @@ harness. The qualification record pins the compiler, cross-toolchain, QEMU,
 private guest image and executable, and records the ordered success markers and
 a rejected non-zero counter-probe.
 
-This is target-SDK evidence, not a MorphOS native compiler release. The guest
-image remains private and is not part of any release asset.
+Download `freebasic-ng-<version>-morphos-powerpc-sdk.tar.xz` for the
+FreeBASIC runtime, BASIC headers and a smoke example. Use the corresponding
+FreeBASIC-NG host release and the separate MorphOS cross-toolchain to build
+programs. The download includes a signature and SBOM, and the release checks
+that the unpacked SDK links a MorphOS executable.
 
 <!-- freebasic-ng:public-release-notes:end -->
 
